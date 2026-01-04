@@ -1,10 +1,5 @@
 # Camunda 7 – Mensch ärgere dich nicht (Solo, 1 Figur)
 
-## Warum der Fix?
-
-Dein Fehler kam daher, dass ich im ersten ZIP ein *nicht existierendes* BOM importiert habe.
-Diese Version nutzt stattdessen die offiziellen Starter-Artefakte direkt mit Version `7.24.0`.
-
 ## Voraussetzungen
 
 - Java 17+
@@ -15,11 +10,6 @@ Diese Version nutzt stattdessen die offiziellen Starter-Artefakte direkt mit Ver
 ```bash
 mvn -U clean spring-boot:run
 ```
-
-Wenn Maven einmal „absent“ gecached hat, hilft auch:
-
-- `mvn -U ...` oder
-- den betroffenen Ordner unter `~/.m2/repository/org/camunda/bpm/springboot` löschen.
 
 ## UI
 
