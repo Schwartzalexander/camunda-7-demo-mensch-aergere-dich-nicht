@@ -20,6 +20,11 @@ public class WorkersConfig {
 	@Bean
 	public ExternalTaskClient externalTaskClient() {
 		// Connect to the embedded engine's REST API
+		try {
+			Thread.sleep(3_000); // wait for embedded engine to start up fully
+		} catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+		}
 		return ExternalTaskClient.create()
 				.baseUrl("http://localhost:8080/engine-rest")
 				.asyncResponseTimeout(10_000)

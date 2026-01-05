@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -21,7 +21,8 @@
 
   <div class="row">
     <button id="startBtn">Neues Spiel starten</button>
-    <div>ProcessInstanceId: <code id="pid">{{processInstanceId}}</code></div>
+    <button id="rollBtn">Würfeln</button>
+    <div>ProcessInstanceId: <code id="pid" th:text="${processInstanceId}"> </code></div>
     <div id="status"></div>
   </div>
 
@@ -31,6 +32,13 @@
 
 <script>
   const GOAL_POS = 10;
+  const POLL_INTERVAL_MS = 1000;
+
+  function ensurePoller() {
+    if (!window.__statePoller) {
+      window.__statePoller = setInterval(fetchState, POLL_INTERVAL_MS);
+    }
+  }
 
   function renderBoard(state) {
     const board = document.getElementById('board');
@@ -63,8 +71,15 @@
     const pid = document.getElementById('pid').textContent.trim();
     if (!pid) return;
     const res = await fetch(`/api/state?processInstanceId=${encodeURIComponent(pid)}`);
+    if (res.status === 404) {
+      document.getElementById('status').textContent = 'Prozess beendet oder nicht gefunden. Starte ein neues Spiel.';
+      clearInterval(window.__statePoller);
+      window.__statePoller = null;
+      return;
+    }
     if (!res.ok) return;
     const state = await res.json();
+    document.getElementById('status').textContent = state.inGoal ? 'Im Ziel 🎉' : 'Läuft...';
     renderBoard(state);
     renderMeta(state);
   }
@@ -75,12 +90,22 @@
     const data = await res.json();
     document.getElementById('pid').textContent = data.processInstanceId;
     document.getElementById('status').textContent = 'Running';
+    ensurePoller();
+    await fetchState();
+  });
+
+  document.getElementById('rollBtn').addEventListener('click', async () => {
+    if (!document.getElementById('pid').textContent.trim()) {
+      document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
+      return;
+    }
+    document.getElementById('status').textContent = 'Würfeln...';
     await fetchState();
   });
 
   // initial render
   fetchState();
-  setInterval(fetchState, 1000);
+  ensurePoller();
 </script>
 </body>
 </html>
