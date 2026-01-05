@@ -33,6 +33,8 @@ public class GameController {
   @GetMapping("/api/state")
   @ResponseBody
   public ResponseEntity<Map<String, Object>> state(@RequestParam String processInstanceId) {
-    return ResponseEntity.ok(gameService.getState(processInstanceId));
+    return gameService.getState(processInstanceId)
+        .map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.notFound().build());
   }
 }

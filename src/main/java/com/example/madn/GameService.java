@@ -45,7 +45,14 @@ public class GameService {
 		return Optional.ofNullable(pi).map(ProcessInstance::getId);
 	}
 
-	public Map<String, Object> getState(String processInstanceId) {
+	public Optional<Map<String, Object>> getState(String processInstanceId) {
+		ProcessInstance pi = runtimeService.createProcessInstanceQuery()
+				.processInstanceId(processInstanceId)
+				.singleResult();
+		if (pi == null) {
+			return Optional.empty();
+		}
+
 		var vars = runtimeService.getVariables(processInstanceId);
 
 		Map<String, Object> state = new HashMap<>();
@@ -60,6 +67,6 @@ public class GameService {
 		state.put("wouldEnterGoal", vars.getOrDefault("wouldEnterGoal", null));
 		state.put("exactGoal", vars.getOrDefault("exactGoal", null));
 		state.put("inGoal", vars.getOrDefault("inGoal", false));
-		return state;
+		return Optional.of(state);
 	}
 }
