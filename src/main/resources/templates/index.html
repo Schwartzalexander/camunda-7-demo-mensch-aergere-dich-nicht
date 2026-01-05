@@ -1,111 +1,111 @@
 <!doctype html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Mensch ärgere dich nicht – BPMN Demo</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 24px; }
-    .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-    button { padding: 10px 14px; cursor: pointer; }
-    .board { display: grid; grid-template-columns: repeat(10, 44px); gap: 8px; margin-top: 18px; }
-    .cell { width: 44px; height: 44px; border: 2px solid #333; border-radius: 10px; display:flex; align-items:center; justify-content:center; position: relative; }
-    .cell.goal { border-style: dashed; }
-    .token { width: 18px; height: 18px; border-radius: 50%; background: #333; position:absolute; }
-    .meta { margin-top: 16px; }
-    code { background: #f3f3f3; padding: 2px 6px; border-radius: 6px; }
-  </style>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Mensch ärgere dich nicht – BPMN Demo</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 24px; }
+        .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        button { padding: 10px 14px; cursor: pointer; }
+        .board { display: grid; grid-template-columns: repeat(30, 44px); gap: 8px; margin-top: 18px; }
+        .cell { width: 44px; height: 44px; border: 2px solid #333; border-radius: 10px; display:flex; align-items:center; justify-content:center; position: relative; }
+        .cell.goal { border-style: dashed; }
+        .token { width: 18px; height: 18px; border-radius: 50%; background: #333; position:absolute; }
+        .meta { margin-top: 16px; }
+        code { background: #f3f3f3; padding: 2px 6px; border-radius: 6px; }
+    </style>
 </head>
 <body>
-  <h1>Mensch ärgere dich nicht (Solo, 1 Figur)</h1>
+<h1>Mensch ärgere dich nicht (Solo, 1 Figur)</h1>
 
-  <div class="row">
+<div class="row">
     <button id="startBtn">Neues Spiel starten</button>
     <button id="rollBtn">Würfeln</button>
     <div>ProcessInstanceId: <code id="pid" th:text="${processInstanceId}"> </code></div>
     <div id="status"></div>
-  </div>
+</div>
 
-  <div class="board" id="board"></div>
+<div class="board" id="board"></div>
 
-  <div class="meta" id="meta"></div>
+<div class="meta" id="meta"></div>
 
 <script>
-  const GOAL_POS = 10;
-  const POLL_INTERVAL_MS = 1000;
+    const GOAL_POS = 30;
+    const POLL_INTERVAL_MS = 1000;
 
-  function ensurePoller() {
-    if (!window.__statePoller) {
-      window.__statePoller = setInterval(fetchState, POLL_INTERVAL_MS);
-    }
-  }
-
-  function renderBoard(state) {
-    const board = document.getElementById('board');
-    board.innerHTML = '';
-    for (let i = 1; i <= GOAL_POS; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'cell' + (i === GOAL_POS ? ' goal' : '');
-      cell.textContent = i;
-      if (state.position === i) {
-        const token = document.createElement('div');
-        token.className = 'token';
-        cell.appendChild(token);
+    function ensurePoller() {
+      if (!window.__statePoller) {
+        window.__statePoller = setInterval(fetchState, POLL_INTERVAL_MS);
       }
-      board.appendChild(cell);
     }
-  }
 
-  function renderMeta(state) {
-    const meta = document.getElementById('meta');
-    meta.innerHTML = `
-      <div>inStartArea: <code>${state.inStartArea}</code> | attempts: <code>${state.attempts}</code> | position: <code>${state.position}</code> | inGoal: <code>${state.inGoal}</code></div>
-      <div>Startbereich-Wurf: <code>${state.lastDice1 ?? '-'}</code> + <code>${state.lastDice2 ?? '-'}</code> (Pasch=<code>${state.isPasch ?? '-'}</code>)</div>
-      <div>Normal-Wurf: <code>${state.lastDice ?? '-'}</code> (wouldEnterGoal=<code>${state.wouldEnterGoal ?? '-'}</code>, exactGoal=<code>${state.exactGoal ?? '-'}</code>)</div>
-      <p>Hinweis: Der Prozess läuft automatisch über External-Task-Worker im selben Spring Boot Prozess. Details siehst du im Log.</p>
-      <p>Camunda Webapps: <a href="/camunda/app/welcome/default/#!/login" target="_blank">Cockpit/Tasklist</a> (demo/demo)</p>
-    `;
-  }
-
-  async function fetchState() {
-    const pid = document.getElementById('pid').textContent.trim();
-    if (!pid) return;
-    const res = await fetch(`/api/state?processInstanceId=${encodeURIComponent(pid)}`);
-    if (res.status === 404) {
-      document.getElementById('status').textContent = 'Prozess beendet oder nicht gefunden. Starte ein neues Spiel.';
-      clearInterval(window.__statePoller);
-      window.__statePoller = null;
-      return;
+    function renderBoard(state) {
+      const board = document.getElementById('board');
+      board.innerHTML = '';
+      for (let i = 1; i <= GOAL_POS; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (i === GOAL_POS ? ' goal' : '');
+        cell.textContent = i;
+        if (state.position === i) {
+          const token = document.createElement('div');
+          token.className = 'token';
+          cell.appendChild(token);
+        }
+        board.appendChild(cell);
+      }
     }
-    if (!res.ok) return;
-    const state = await res.json();
-    document.getElementById('status').textContent = state.inGoal ? 'Im Ziel 🎉' : 'Läuft...';
-    renderBoard(state);
-    renderMeta(state);
-  }
 
-  document.getElementById('startBtn').addEventListener('click', async () => {
-    document.getElementById('status').textContent = 'Starting...';
-    const res = await fetch('/api/start', { method: 'POST' });
-    const data = await res.json();
-    document.getElementById('pid').textContent = data.processInstanceId;
-    document.getElementById('status').textContent = 'Running';
+    function renderMeta(state) {
+      const meta = document.getElementById('meta');
+      meta.innerHTML = `
+        <div>inStartArea: <code>${state.inStartArea}</code> | attempts: <code>${state.attempts}</code> | position: <code>${state.position}</code> | inGoal: <code>${state.inGoal}</code></div>
+        <div>Startbereich-Wurf: <code>${state.lastDice1 ?? '-'}</code> + <code>${state.lastDice2 ?? '-'}</code> (Pasch=<code>${state.isPasch ?? '-'}</code>)</div>
+        <div>Normal-Wurf: <code>${state.lastDice ?? '-'}</code> (wouldEnterGoal=<code>${state.wouldEnterGoal ?? '-'}</code>, exactGoal=<code>${state.exactGoal ?? '-'}</code>)</div>
+        <p>Hinweis: Der Prozess läuft automatisch über External-Task-Worker im selben Spring Boot Prozess. Details siehst du im Log.</p>
+        <p>Camunda Webapps: <a href="/camunda/app/welcome/default/#!/login" target="_blank">Cockpit/Tasklist</a> (demo/demo)</p>
+      `;
+    }
+
+    async function fetchState() {
+      const pid = document.getElementById('pid').textContent.trim();
+      if (!pid) return;
+      const res = await fetch(`/api/state?processInstanceId=${encodeURIComponent(pid)}`);
+      if (res.status === 404) {
+        document.getElementById('status').textContent = 'Prozess beendet oder nicht gefunden. Starte ein neues Spiel.';
+        clearInterval(window.__statePoller);
+        window.__statePoller = null;
+        return;
+      }
+      if (!res.ok) return;
+      const state = await res.json();
+      document.getElementById('status').textContent = state.inGoal ? 'Im Ziel 🎉' : 'Läuft...';
+      renderBoard(state);
+      renderMeta(state);
+    }
+
+    document.getElementById('startBtn').addEventListener('click', async () => {
+      document.getElementById('status').textContent = 'Starting...';
+      const res = await fetch('/api/start', { method: 'POST' });
+      const data = await res.json();
+      document.getElementById('pid').textContent = data.processInstanceId;
+      document.getElementById('status').textContent = 'Running';
+      ensurePoller();
+      await fetchState();
+    });
+
+    document.getElementById('rollBtn').addEventListener('click', async () => {
+      if (!document.getElementById('pid').textContent.trim()) {
+        document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
+        return;
+      }
+      document.getElementById('status').textContent = 'Würfeln...';
+      await fetchState();
+    });
+
+    // initial render
+    fetchState();
     ensurePoller();
-    await fetchState();
-  });
-
-  document.getElementById('rollBtn').addEventListener('click', async () => {
-    if (!document.getElementById('pid').textContent.trim()) {
-      document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
-      return;
-    }
-    document.getElementById('status').textContent = 'Würfeln...';
-    await fetchState();
-  });
-
-  // initial render
-  fetchState();
-  ensurePoller();
 </script>
 </body>
 </html>

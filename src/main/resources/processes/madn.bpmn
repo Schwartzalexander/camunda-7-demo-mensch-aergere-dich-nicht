@@ -1,486 +1,402 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
-  id="Definitions_MaDn_Solo"
-  targetNamespace="http://example.com/mensch-aerger-dich-nicht">
-
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_MaDn_Solo" targetNamespace="http://example.com/mensch-aerger-dich-nicht" exporter="Camunda Modeler" exporterVersion="5.42.0">
   <bpmn:process id="Process_MaDn_Solo_OneFigure" name="Mensch ärgere dich nicht (Solo, 1 Figur)" isExecutable="true">
-
-    <!-- Start -->
     <bpmn:startEvent id="StartEvent_GameStart" name="Spieler beginnt das Spiel">
       <bpmn:outgoing>Flow_Start_To_CheckStartArea</bpmn:outgoing>
     </bpmn:startEvent>
-
-    <!-- Decide: still in start area? -->
     <bpmn:exclusiveGateway id="Gateway_InStartArea" name="Figur im Startbereich?">
       <bpmn:incoming>Flow_Start_To_CheckStartArea</bpmn:incoming>
       <bpmn:outgoing>Flow_CheckStartArea_Yes</bpmn:outgoing>
       <bpmn:outgoing>Flow_CheckStartArea_No</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-
-    <bpmn:sequenceFlow id="Flow_Start_To_CheckStartArea" sourceRef="StartEvent_GameStart" targetRef="Gateway_InStartArea"/>
-
-    <!-- Start area turn (max 3 attempts) -->
+    <bpmn:sequenceFlow id="Flow_Start_To_CheckStartArea" sourceRef="StartEvent_GameStart" targetRef="Gateway_InStartArea" />
     <bpmn:subProcess id="SubProcess_StartAreaTurn" name="Startbereich-Zug (max. 3 Versuche)">
       <bpmn:incoming>Flow_CheckStartArea_Yes</bpmn:incoming>
       <bpmn:outgoing>Flow_StartAreaTurn_To_NextTurn</bpmn:outgoing>
-
       <bpmn:startEvent id="StartEvent_StartAreaTurn" name="Startbereich-Zug beginnt">
         <bpmn:outgoing>Flow_InitCounter</bpmn:outgoing>
       </bpmn:startEvent>
-
-     <bpmn:serviceTask id="Task_InitCounter" name="Versuchs-Zähler auf 0 setzen"
-                       camunda:class="com.example.madn.camunda.delegate.InitAttemptsDelegate">
-       <bpmn:incoming>Flow_InitCounter</bpmn:incoming>
-       <bpmn:outgoing>Flow_RollDice_StartArea</bpmn:outgoing>
-     </bpmn:serviceTask>
-
-
-      <bpmn:sequenceFlow id="Flow_InitCounter" sourceRef="StartEvent_StartAreaTurn" targetRef="Task_InitCounter"/>
-
+      <bpmn:serviceTask id="Task_InitCounter" name="Versuchs-Zähler auf 0 setzen" camunda:class="com.example.madn.camunda.delegate.InitAttemptsDelegate">
+        <bpmn:extensionElements />
+        <bpmn:incoming>Flow_InitCounter</bpmn:incoming>
+        <bpmn:outgoing>Flow_RollDice_StartArea</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:sequenceFlow id="Flow_InitCounter" sourceRef="StartEvent_StartAreaTurn" targetRef="Task_InitCounter" />
       <bpmn:serviceTask id="Task_RollDice_StartArea" name="Würfeln (Startbereich)" camunda:type="external" camunda:topic="rollDiceStart">
         <bpmn:incoming>Flow_RollDice_StartArea</bpmn:incoming>
         <bpmn:outgoing>Flow_To_CheckPasch</bpmn:outgoing>
       </bpmn:serviceTask>
-
-      <bpmn:sequenceFlow id="Flow_RollDice_StartArea" sourceRef="Task_InitCounter" targetRef="Task_RollDice_StartArea"/>
-
+      <bpmn:sequenceFlow id="Flow_RollDice_StartArea" sourceRef="Task_InitCounter" targetRef="Task_RollDice_StartArea" />
       <bpmn:exclusiveGateway id="Gateway_Pasch" name="Pasch?">
         <bpmn:incoming>Flow_To_CheckPasch</bpmn:incoming>
         <bpmn:outgoing>Flow_Pasch_Yes</bpmn:outgoing>
         <bpmn:outgoing>Flow_Pasch_No</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-
-      <bpmn:sequenceFlow id="Flow_To_CheckPasch" sourceRef="Task_RollDice_StartArea" targetRef="Gateway_Pasch"/>
-
+      <bpmn:sequenceFlow id="Flow_To_CheckPasch" sourceRef="Task_RollDice_StartArea" targetRef="Gateway_Pasch" />
       <bpmn:serviceTask id="Task_EnterBoard" name="Figur aufs Spielfeld setzen (Startfeld)" camunda:type="external" camunda:topic="enterBoard">
         <bpmn:incoming>Flow_Pasch_Yes</bpmn:incoming>
         <bpmn:outgoing>Flow_EndStartAreaTurnSuccess</bpmn:outgoing>
       </bpmn:serviceTask>
-
       <bpmn:sequenceFlow id="Flow_Pasch_Yes" sourceRef="Gateway_Pasch" targetRef="Task_EnterBoard">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${isPasch == true}]]></bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${isPasch == true}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-
-    <bpmn:serviceTask id="Task_IncAttempts" name="Versuchs-Zähler +1"
-                      camunda:class="com.example.madn.camunda.delegate.IncAttemptsDelegate">
-      <bpmn:incoming>Flow_Pasch_No</bpmn:incoming>
-      <bpmn:outgoing>Flow_Check3Attempts</bpmn:outgoing>
-    </bpmn:serviceTask>
-
-
+      <bpmn:serviceTask id="Task_IncAttempts" name="Versuchs-Zähler +1" camunda:class="com.example.madn.camunda.delegate.IncAttemptsDelegate">
+        <bpmn:incoming>Flow_Pasch_No</bpmn:incoming>
+        <bpmn:outgoing>Flow_Check3Attempts</bpmn:outgoing>
+      </bpmn:serviceTask>
       <bpmn:sequenceFlow id="Flow_Pasch_No" sourceRef="Gateway_Pasch" targetRef="Task_IncAttempts">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${isPasch == false}]]></bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${isPasch == false}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-
       <bpmn:exclusiveGateway id="Gateway_ThreeAttempts" name="Schon 3 Versuche?">
         <bpmn:incoming>Flow_Check3Attempts</bpmn:incoming>
         <bpmn:outgoing>Flow_ThreeAttempts_Yes</bpmn:outgoing>
         <bpmn:outgoing>Flow_ThreeAttempts_No</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-
-      <bpmn:sequenceFlow id="Flow_Check3Attempts" sourceRef="Task_IncAttempts" targetRef="Gateway_ThreeAttempts"/>
-
+      <bpmn:sequenceFlow id="Flow_Check3Attempts" sourceRef="Task_IncAttempts" targetRef="Gateway_ThreeAttempts" />
       <bpmn:sequenceFlow id="Flow_ThreeAttempts_Yes" sourceRef="Gateway_ThreeAttempts" targetRef="EndEvent_StartAreaTurn">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${attempts >= 3}]]></bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${attempts &gt;= 3}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-
       <bpmn:sequenceFlow id="Flow_ThreeAttempts_No" sourceRef="Gateway_ThreeAttempts" targetRef="Task_RollDice_StartArea">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${attempts < 3}]]></bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${attempts &lt; 3}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-
       <bpmn:endEvent id="EndEvent_StartAreaTurn" name="Startbereich-Zug endet">
         <bpmn:incoming>Flow_EndStartAreaTurnSuccess</bpmn:incoming>
         <bpmn:incoming>Flow_ThreeAttempts_Yes</bpmn:incoming>
       </bpmn:endEvent>
-
-      <bpmn:sequenceFlow id="Flow_EndStartAreaTurnSuccess" sourceRef="Task_EnterBoard" targetRef="EndEvent_StartAreaTurn"/>
-
+      <bpmn:sequenceFlow id="Flow_EndStartAreaTurnSuccess" sourceRef="Task_EnterBoard" targetRef="EndEvent_StartAreaTurn" />
     </bpmn:subProcess>
-
     <bpmn:sequenceFlow id="Flow_CheckStartArea_Yes" sourceRef="Gateway_InStartArea" targetRef="SubProcess_StartAreaTurn">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${inStartArea == true}]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${inStartArea == true}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-
-    <!-- Normal turn -->
     <bpmn:subProcess id="SubProcess_NormalTurn" name="Normaler Zug">
       <bpmn:incoming>Flow_CheckStartArea_No</bpmn:incoming>
       <bpmn:outgoing>Flow_NormalTurn_To_CheckWin</bpmn:outgoing>
-
       <bpmn:startEvent id="StartEvent_NormalTurn" name="Normaler Zug beginnt">
         <bpmn:outgoing>Flow_RollDice_Normal</bpmn:outgoing>
       </bpmn:startEvent>
-
       <bpmn:serviceTask id="Task_RollDice_Normal" name="Würfeln" camunda:type="external" camunda:topic="rollDiceNormal">
         <bpmn:incoming>Flow_RollDice_Normal</bpmn:incoming>
         <bpmn:outgoing>Flow_CheckWouldEnterGoal</bpmn:outgoing>
       </bpmn:serviceTask>
-
-      <bpmn:sequenceFlow id="Flow_RollDice_Normal" sourceRef="StartEvent_NormalTurn" targetRef="Task_RollDice_Normal"/>
-
+      <bpmn:sequenceFlow id="Flow_RollDice_Normal" sourceRef="StartEvent_NormalTurn" targetRef="Task_RollDice_Normal" />
       <bpmn:exclusiveGateway id="Gateway_WouldEnterGoal" name="Zug würde ins Ziel führen?">
         <bpmn:incoming>Flow_CheckWouldEnterGoal</bpmn:incoming>
         <bpmn:outgoing>Flow_WouldEnterGoal_No</bpmn:outgoing>
         <bpmn:outgoing>Flow_WouldEnterGoal_Yes</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-
-      <bpmn:sequenceFlow id="Flow_CheckWouldEnterGoal" sourceRef="Task_RollDice_Normal" targetRef="Gateway_WouldEnterGoal"/>
-
+      <bpmn:sequenceFlow id="Flow_CheckWouldEnterGoal" sourceRef="Task_RollDice_Normal" targetRef="Gateway_WouldEnterGoal" />
       <bpmn:serviceTask id="Task_MoveNormally" name="Figur um Augenzahl ziehen" camunda:type="external" camunda:topic="moveNormally">
         <bpmn:incoming>Flow_WouldEnterGoal_No</bpmn:incoming>
         <bpmn:outgoing>Flow_NormalMove_To_End</bpmn:outgoing>
       </bpmn:serviceTask>
-
       <bpmn:sequenceFlow id="Flow_WouldEnterGoal_No" sourceRef="Gateway_WouldEnterGoal" targetRef="Task_MoveNormally">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${wouldEnterGoal == false}]]></bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${wouldEnterGoal == false}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-
       <bpmn:exclusiveGateway id="Gateway_ExactGoal" name="Augenzahl passt exakt?">
         <bpmn:incoming>Flow_WouldEnterGoal_Yes</bpmn:incoming>
         <bpmn:outgoing>Flow_ExactGoal_Yes</bpmn:outgoing>
         <bpmn:outgoing>Flow_ExactGoal_No</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-
       <bpmn:sequenceFlow id="Flow_WouldEnterGoal_Yes" sourceRef="Gateway_WouldEnterGoal" targetRef="Gateway_ExactGoal">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${wouldEnterGoal == true}]]></bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${wouldEnterGoal == true}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-
       <bpmn:serviceTask id="Task_MoveIntoGoal" name="Figur ins Ziel ziehen" camunda:type="external" camunda:topic="moveIntoGoal">
         <bpmn:incoming>Flow_ExactGoal_Yes</bpmn:incoming>
         <bpmn:outgoing>Flow_GoalMove_To_End</bpmn:outgoing>
       </bpmn:serviceTask>
-
       <bpmn:sequenceFlow id="Flow_ExactGoal_Yes" sourceRef="Gateway_ExactGoal" targetRef="Task_MoveIntoGoal">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${exactGoal == true}]]></bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${exactGoal == true}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-
-    <bpmn:serviceTask id="Task_NoMove" name="Nicht ziehen (Zug verfällt)"
-                      camunda:class="com.example.madn.camunda.delegate.NoopDelegate">
-      <bpmn:incoming>Flow_ExactGoal_No</bpmn:incoming>
-      <bpmn:outgoing>Flow_NoMove_To_End</bpmn:outgoing>
-    </bpmn:serviceTask>
-
-
+      <bpmn:serviceTask id="Task_NoMove" name="Nicht ziehen (Zug verfällt)" camunda:class="com.example.madn.camunda.delegate.NoopDelegate">
+        <bpmn:incoming>Flow_ExactGoal_No</bpmn:incoming>
+        <bpmn:outgoing>Flow_NoMove_To_End</bpmn:outgoing>
+      </bpmn:serviceTask>
       <bpmn:sequenceFlow id="Flow_ExactGoal_No" sourceRef="Gateway_ExactGoal" targetRef="Task_NoMove">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${exactGoal == false}]]></bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${exactGoal == false}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-
       <bpmn:endEvent id="EndEvent_NormalTurn" name="Normaler Zug endet">
         <bpmn:incoming>Flow_NormalMove_To_End</bpmn:incoming>
         <bpmn:incoming>Flow_GoalMove_To_End</bpmn:incoming>
         <bpmn:incoming>Flow_NoMove_To_End</bpmn:incoming>
       </bpmn:endEvent>
-
-      <bpmn:sequenceFlow id="Flow_NormalMove_To_End" sourceRef="Task_MoveNormally" targetRef="EndEvent_NormalTurn"/>
-      <bpmn:sequenceFlow id="Flow_GoalMove_To_End" sourceRef="Task_MoveIntoGoal" targetRef="EndEvent_NormalTurn"/>
-      <bpmn:sequenceFlow id="Flow_NoMove_To_End" sourceRef="Task_NoMove" targetRef="EndEvent_NormalTurn"/>
-
+      <bpmn:sequenceFlow id="Flow_NormalMove_To_End" sourceRef="Task_MoveNormally" targetRef="EndEvent_NormalTurn" />
+      <bpmn:sequenceFlow id="Flow_GoalMove_To_End" sourceRef="Task_MoveIntoGoal" targetRef="EndEvent_NormalTurn" />
+      <bpmn:sequenceFlow id="Flow_NoMove_To_End" sourceRef="Task_NoMove" targetRef="EndEvent_NormalTurn" />
     </bpmn:subProcess>
-
     <bpmn:sequenceFlow id="Flow_CheckStartArea_No" sourceRef="Gateway_InStartArea" targetRef="SubProcess_NormalTurn">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${inStartArea == false}]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${inStartArea == false}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-
-    <!-- Next turn after start-area -->
     <bpmn:intermediateThrowEvent id="Event_NextTurn_AfterStartArea" name="Nächster Zug">
+      <bpmn:extensionElements>
+        <camunda:executionListener class="com.example.madn.camunda.delegate.NewMoveAfterStartAreaMoveDelegate" event="start" />
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_StartAreaTurn_To_NextTurn</bpmn:incoming>
       <bpmn:outgoing>Flow_NextTurn_To_CheckStartArea</bpmn:outgoing>
     </bpmn:intermediateThrowEvent>
-
-    <bpmn:sequenceFlow id="Flow_StartAreaTurn_To_NextTurn" sourceRef="SubProcess_StartAreaTurn" targetRef="Event_NextTurn_AfterStartArea"/>
-    <bpmn:sequenceFlow id="Flow_NextTurn_To_CheckStartArea" sourceRef="Event_NextTurn_AfterStartArea" targetRef="Gateway_InStartArea"/>
-
-    <!-- After normal turn: check win -->
+    <bpmn:sequenceFlow id="Flow_StartAreaTurn_To_NextTurn" sourceRef="SubProcess_StartAreaTurn" targetRef="Event_NextTurn_AfterStartArea" />
+    <bpmn:sequenceFlow id="Flow_NextTurn_To_CheckStartArea" sourceRef="Event_NextTurn_AfterStartArea" targetRef="Gateway_InStartArea" />
     <bpmn:exclusiveGateway id="Gateway_CheckWin" name="Ziel erreicht?">
       <bpmn:incoming>Flow_NormalTurn_To_CheckWin</bpmn:incoming>
       <bpmn:outgoing>Flow_Win_Yes</bpmn:outgoing>
       <bpmn:outgoing>Flow_Win_No</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-
-    <bpmn:sequenceFlow id="Flow_NormalTurn_To_CheckWin" sourceRef="SubProcess_NormalTurn" targetRef="Gateway_CheckWin"/>
-
+    <bpmn:sequenceFlow id="Flow_NormalTurn_To_CheckWin" sourceRef="SubProcess_NormalTurn" targetRef="Gateway_CheckWin" />
     <bpmn:endEvent id="EndEvent_Win" name="Spiel gewonnen (Figur im Ziel)">
       <bpmn:incoming>Flow_Win_Yes</bpmn:incoming>
     </bpmn:endEvent>
-
     <bpmn:sequenceFlow id="Flow_Win_Yes" sourceRef="Gateway_CheckWin" targetRef="EndEvent_Win">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${inGoal == true}]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${inGoal == true}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-
     <bpmn:intermediateThrowEvent id="Event_NextTurn_AfterNormal" name="Nächster Zug">
+      <bpmn:extensionElements>
+        <camunda:executionListener class="com.example.madn.camunda.delegate.NewMoveAfterNormalMoveDelegate" event="start" />
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_Win_No</bpmn:incoming>
       <bpmn:outgoing>Flow_LoopBack_To_CheckStartArea</bpmn:outgoing>
     </bpmn:intermediateThrowEvent>
-
     <bpmn:sequenceFlow id="Flow_Win_No" sourceRef="Gateway_CheckWin" targetRef="Event_NextTurn_AfterNormal">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[${inGoal == false}]]></bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${inGoal == false}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-
-    <bpmn:sequenceFlow id="Flow_LoopBack_To_CheckStartArea" sourceRef="Event_NextTurn_AfterNormal" targetRef="Gateway_InStartArea"/>
-
+    <bpmn:sequenceFlow id="Flow_LoopBack_To_CheckStartArea" sourceRef="Event_NextTurn_AfterNormal" targetRef="Gateway_InStartArea" />
   </bpmn:process>
-
-  <!-- Diagram Interchange (needed so Modeler can display it) -->
   <bpmndi:BPMNDiagram id="BPMNDiagram_MaDn_Solo">
     <bpmndi:BPMNPlane id="BPMNPlane_MaDn_Solo" bpmnElement="Process_MaDn_Solo_OneFigure">
-
-      <!-- Top-level shapes -->
       <bpmndi:BPMNShape id="Shape_StartEvent_GameStart" bpmnElement="StartEvent_GameStart">
-        <dc:Bounds x="150" y="160" width="36" height="36"/>
+        <dc:Bounds x="150" y="220" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="131" y="256" width="74" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Gateway_InStartArea" bpmnElement="Gateway_InStartArea" isMarkerVisible="true">
-        <dc:Bounds x="260" y="155" width="50" height="50"/>
+        <dc:Bounds x="260" y="215" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="252" y="265" width="66" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
-      <bpmndi:BPMNShape id="Shape_SubProcess_StartAreaTurn" bpmnElement="SubProcess_StartAreaTurn" isExpanded="true">
-        <dc:Bounds x="360" y="60" width="820" height="240"/>
-      </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Event_NextTurn_AfterStartArea" bpmnElement="Event_NextTurn_AfterStartArea">
-        <dc:Bounds x="1210" y="160" width="36" height="36"/>
+        <dc:Bounds x="1210" y="220" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1195" y="256" width="67" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
-      <bpmndi:BPMNShape id="Shape_SubProcess_NormalTurn" bpmnElement="SubProcess_NormalTurn" isExpanded="true">
-        <dc:Bounds x="360" y="320" width="820" height="260"/>
-      </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Gateway_CheckWin" bpmnElement="Gateway_CheckWin" isMarkerVisible="true">
-        <dc:Bounds x="1210" y="420" width="50" height="50"/>
+        <dc:Bounds x="1210" y="480" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1203" y="530" width="64" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_EndEvent_Win" bpmnElement="EndEvent_Win">
-        <dc:Bounds x="1340" y="427" width="36" height="36"/>
+        <dc:Bounds x="1340" y="487" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1319" y="523" width="79" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Event_NextTurn_AfterNormal" bpmnElement="Event_NextTurn_AfterNormal">
-        <dc:Bounds x="1340" y="497" width="36" height="36"/>
+        <dc:Bounds x="1340" y="557" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1325" y="593" width="67" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
-      <!-- Edges top-level -->
-      <bpmndi:BPMNEdge id="Edge_Flow_Start_To_CheckStartArea" bpmnElement="Flow_Start_To_CheckStartArea">
-        <di:waypoint x="186" y="178"/>
-        <di:waypoint x="260" y="180"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_CheckStartArea_Yes" bpmnElement="Flow_CheckStartArea_Yes">
-        <di:waypoint x="310" y="170"/>
-        <di:waypoint x="360" y="170"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_CheckStartArea_No" bpmnElement="Flow_CheckStartArea_No">
-        <di:waypoint x="285" y="205"/>
-        <di:waypoint x="285" y="450"/>
-        <di:waypoint x="360" y="450"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_StartAreaTurn_To_NextTurn" bpmnElement="Flow_StartAreaTurn_To_NextTurn">
-        <di:waypoint x="1180" y="180"/>
-        <di:waypoint x="1210" y="178"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_NextTurn_To_CheckStartArea" bpmnElement="Flow_NextTurn_To_CheckStartArea">
-        <di:waypoint x="1246" y="178"/>
-        <di:waypoint x="1280" y="178"/>
-        <di:waypoint x="1280" y="20"/>
-        <di:waypoint x="220" y="20"/>
-        <di:waypoint x="220" y="180"/>
-        <di:waypoint x="260" y="180"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_NormalTurn_To_CheckWin" bpmnElement="Flow_NormalTurn_To_CheckWin">
-        <di:waypoint x="1180" y="450"/>
-        <di:waypoint x="1210" y="445"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_Win_Yes" bpmnElement="Flow_Win_Yes">
-        <di:waypoint x="1260" y="445"/>
-        <di:waypoint x="1340" y="445"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_Win_No" bpmnElement="Flow_Win_No">
-        <di:waypoint x="1235" y="470"/>
-        <di:waypoint x="1235" y="515"/>
-        <di:waypoint x="1340" y="515"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_LoopBack_To_CheckStartArea" bpmnElement="Flow_LoopBack_To_CheckStartArea">
-        <di:waypoint x="1376" y="515"/>
-        <di:waypoint x="1410" y="515"/>
-        <di:waypoint x="1410" y="620"/>
-        <di:waypoint x="220" y="620"/>
-        <di:waypoint x="220" y="180"/>
-        <di:waypoint x="260" y="180"/>
-      </bpmndi:BPMNEdge>
-
-      <!-- Subprocess A internal shapes -->
+      <bpmndi:BPMNShape id="Shape_SubProcess_StartAreaTurn" bpmnElement="SubProcess_StartAreaTurn" isExpanded="true">
+        <dc:Bounds x="360" y="120" width="820" height="240" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_StartEvent_StartAreaTurn" bpmnElement="StartEvent_StartAreaTurn">
-        <dc:Bounds x="400" y="150" width="36" height="36"/>
+        <dc:Bounds x="400" y="210" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="377" y="246" width="82" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_InitCounter" bpmnElement="Task_InitCounter">
-        <dc:Bounds x="470" y="130" width="160" height="80"/>
+        <dc:Bounds x="470" y="190" width="160" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_RollDice_StartArea" bpmnElement="Task_RollDice_StartArea">
-        <dc:Bounds x="660" y="130" width="140" height="80"/>
+        <dc:Bounds x="660" y="190" width="140" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Gateway_Pasch" bpmnElement="Gateway_Pasch" isMarkerVisible="true">
-        <dc:Bounds x="830" y="145" width="50" height="50"/>
+        <dc:Bounds x="830" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="837" y="255" width="37" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_EnterBoard" bpmnElement="Task_EnterBoard">
-        <dc:Bounds x="910" y="80" width="220" height="80"/>
+        <dc:Bounds x="910" y="140" width="220" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_IncAttempts" bpmnElement="Task_IncAttempts">
-        <dc:Bounds x="910" y="200" width="180" height="80"/>
+        <dc:Bounds x="910" y="260" width="180" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Gateway_ThreeAttempts" bpmnElement="Gateway_ThreeAttempts" isMarkerVisible="true">
-        <dc:Bounds x="1120" y="215" width="50" height="50"/>
+        <dc:Bounds x="1120" y="275" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1119" y="325" width="52" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_EndEvent_StartAreaTurn" bpmnElement="EndEvent_StartAreaTurn">
-        <dc:Bounds x="1120" y="97" width="36" height="36"/>
+        <dc:Bounds x="1120" y="157" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1097" y="193" width="82" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
-      <!-- Subprocess A internal edges -->
       <bpmndi:BPMNEdge id="Edge_Flow_InitCounter" bpmnElement="Flow_InitCounter">
-        <di:waypoint x="436" y="168"/>
-        <di:waypoint x="470" y="170"/>
+        <di:waypoint x="436" y="228" />
+        <di:waypoint x="470" y="230" />
       </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_RollDice_StartArea" bpmnElement="Flow_RollDice_StartArea">
-        <di:waypoint x="630" y="170"/>
-        <di:waypoint x="660" y="170"/>
+        <di:waypoint x="630" y="230" />
+        <di:waypoint x="660" y="230" />
       </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_To_CheckPasch" bpmnElement="Flow_To_CheckPasch">
-        <di:waypoint x="800" y="170"/>
-        <di:waypoint x="830" y="170"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_Pasch_Yes" bpmnElement="Flow_Pasch_Yes">
-        <di:waypoint x="855" y="145"/>
-        <di:waypoint x="855" y="120"/>
-        <di:waypoint x="910" y="120"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_Pasch_No" bpmnElement="Flow_Pasch_No">
-        <di:waypoint x="880" y="170"/>
-        <di:waypoint x="910" y="240"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_EndStartAreaTurnSuccess" bpmnElement="Flow_EndStartAreaTurnSuccess">
-        <di:waypoint x="1130" y="120"/>
-        <di:waypoint x="1138" y="115"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_Check3Attempts" bpmnElement="Flow_Check3Attempts">
-        <di:waypoint x="1090" y="240"/>
-        <di:waypoint x="1120" y="240"/>
-      </bpmndi:BPMNEdge>
-
-      <bpmndi:BPMNEdge id="Edge_Flow_ThreeAttempts_Yes" bpmnElement="Flow_ThreeAttempts_Yes">
-        <di:waypoint x="1145" y="215"/>
-        <di:waypoint x="1145" y="133"/>
-      </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_ThreeAttempts_No" bpmnElement="Flow_ThreeAttempts_No">
-        <di:waypoint x="1170" y="240"/>
-        <di:waypoint x="1230" y="240"/>
-        <di:waypoint x="1230" y="170"/>
-        <di:waypoint x="660" y="170"/>
+        <di:waypoint x="1170" y="300" />
+        <di:waypoint x="1230" y="300" />
+        <di:waypoint x="1230" y="230" />
+        <di:waypoint x="660" y="230" />
       </bpmndi:BPMNEdge>
-
-      <!-- Subprocess B internal shapes -->
+      <bpmndi:BPMNEdge id="Edge_Flow_To_CheckPasch" bpmnElement="Flow_To_CheckPasch">
+        <di:waypoint x="800" y="230" />
+        <di:waypoint x="830" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Pasch_Yes" bpmnElement="Flow_Pasch_Yes">
+        <di:waypoint x="855" y="205" />
+        <di:waypoint x="855" y="180" />
+        <di:waypoint x="910" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Pasch_No" bpmnElement="Flow_Pasch_No">
+        <di:waypoint x="880" y="230" />
+        <di:waypoint x="910" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_EndStartAreaTurnSuccess" bpmnElement="Flow_EndStartAreaTurnSuccess">
+        <di:waypoint x="1130" y="180" />
+        <di:waypoint x="1138" y="175" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Check3Attempts" bpmnElement="Flow_Check3Attempts">
+        <di:waypoint x="1090" y="300" />
+        <di:waypoint x="1120" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_ThreeAttempts_Yes" bpmnElement="Flow_ThreeAttempts_Yes">
+        <di:waypoint x="1145" y="275" />
+        <di:waypoint x="1145" y="193" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Shape_SubProcess_NormalTurn" bpmnElement="SubProcess_NormalTurn" isExpanded="true">
+        <dc:Bounds x="360" y="380" width="820" height="260" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_StartEvent_NormalTurn" bpmnElement="StartEvent_NormalTurn">
-        <dc:Bounds x="400" y="430" width="36" height="36"/>
+        <dc:Bounds x="400" y="490" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="384" y="526" width="68" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_RollDice_Normal" bpmnElement="Task_RollDice_Normal">
-        <dc:Bounds x="470" y="410" width="140" height="80"/>
+        <dc:Bounds x="470" y="470" width="140" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Gateway_WouldEnterGoal" bpmnElement="Gateway_WouldEnterGoal" isMarkerVisible="true">
-        <dc:Bounds x="640" y="425" width="50" height="50"/>
+        <dc:Bounds x="640" y="485" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="630" y="535" width="70" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_MoveNormally" bpmnElement="Task_MoveNormally">
-        <dc:Bounds x="720" y="380" width="200" height="80"/>
+        <dc:Bounds x="720" y="440" width="200" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Gateway_ExactGoal" bpmnElement="Gateway_ExactGoal" isMarkerVisible="true">
-        <dc:Bounds x="720" y="485" width="50" height="50"/>
+        <dc:Bounds x="720" y="545" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="705" y="595" width="81" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_MoveIntoGoal" bpmnElement="Task_MoveIntoGoal">
-        <dc:Bounds x="800" y="520" width="200" height="80"/>
+        <dc:Bounds x="800" y="580" width="200" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_Task_NoMove" bpmnElement="Task_NoMove">
-        <dc:Bounds x="800" y="450" width="200" height="80"/>
+        <dc:Bounds x="800" y="510" width="200" height="80" />
       </bpmndi:BPMNShape>
-
       <bpmndi:BPMNShape id="Shape_EndEvent_NormalTurn" bpmnElement="EndEvent_NormalTurn">
-        <dc:Bounds x="1040" y="435" width="36" height="36"/>
+        <dc:Bounds x="1040" y="495" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1024" y="531" width="68" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-
-      <!-- Subprocess B internal edges -->
       <bpmndi:BPMNEdge id="Edge_Flow_RollDice_Normal" bpmnElement="Flow_RollDice_Normal">
-        <di:waypoint x="436" y="448"/>
-        <di:waypoint x="470" y="450"/>
+        <di:waypoint x="436" y="508" />
+        <di:waypoint x="470" y="510" />
       </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_CheckWouldEnterGoal" bpmnElement="Flow_CheckWouldEnterGoal">
-        <di:waypoint x="610" y="450"/>
-        <di:waypoint x="640" y="450"/>
+        <di:waypoint x="610" y="510" />
+        <di:waypoint x="640" y="510" />
       </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_WouldEnterGoal_No" bpmnElement="Flow_WouldEnterGoal_No">
-        <di:waypoint x="690" y="440"/>
-        <di:waypoint x="720" y="420"/>
+        <di:waypoint x="690" y="500" />
+        <di:waypoint x="720" y="480" />
       </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_WouldEnterGoal_Yes" bpmnElement="Flow_WouldEnterGoal_Yes">
-        <di:waypoint x="665" y="475"/>
-        <di:waypoint x="665" y="510"/>
-        <di:waypoint x="720" y="510"/>
+        <di:waypoint x="665" y="535" />
+        <di:waypoint x="665" y="570" />
+        <di:waypoint x="720" y="570" />
       </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_NormalMove_To_End" bpmnElement="Flow_NormalMove_To_End">
-        <di:waypoint x="920" y="420"/>
-        <di:waypoint x="1040" y="453"/>
+        <di:waypoint x="920" y="480" />
+        <di:waypoint x="1040" y="513" />
       </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_ExactGoal_Yes" bpmnElement="Flow_ExactGoal_Yes">
-        <di:waypoint x="770" y="510"/>
-        <di:waypoint x="800" y="560"/>
+        <di:waypoint x="770" y="570" />
+        <di:waypoint x="800" y="620" />
       </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_ExactGoal_No" bpmnElement="Flow_ExactGoal_No">
-        <di:waypoint x="745" y="485"/>
-        <di:waypoint x="800" y="490"/>
+        <di:waypoint x="745" y="545" />
+        <di:waypoint x="800" y="550" />
       </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_GoalMove_To_End" bpmnElement="Flow_GoalMove_To_End">
-        <di:waypoint x="1000" y="560"/>
-        <di:waypoint x="1040" y="453"/>
+        <di:waypoint x="1000" y="620" />
+        <di:waypoint x="1040" y="513" />
       </bpmndi:BPMNEdge>
-
       <bpmndi:BPMNEdge id="Edge_Flow_NoMove_To_End" bpmnElement="Flow_NoMove_To_End">
-        <di:waypoint x="1000" y="490"/>
-        <di:waypoint x="1040" y="453"/>
+        <di:waypoint x="1000" y="550" />
+        <di:waypoint x="1040" y="513" />
       </bpmndi:BPMNEdge>
-
+      <bpmndi:BPMNEdge id="Edge_Flow_Start_To_CheckStartArea" bpmnElement="Flow_Start_To_CheckStartArea">
+        <di:waypoint x="186" y="238" />
+        <di:waypoint x="260" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_NextTurn_To_CheckStartArea" bpmnElement="Flow_NextTurn_To_CheckStartArea">
+        <di:waypoint x="1246" y="238" />
+        <di:waypoint x="1280" y="238" />
+        <di:waypoint x="1280" y="80" />
+        <di:waypoint x="220" y="80" />
+        <di:waypoint x="220" y="240" />
+        <di:waypoint x="260" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_LoopBack_To_CheckStartArea" bpmnElement="Flow_LoopBack_To_CheckStartArea">
+        <di:waypoint x="1376" y="575" />
+        <di:waypoint x="1410" y="575" />
+        <di:waypoint x="1410" y="680" />
+        <di:waypoint x="220" y="680" />
+        <di:waypoint x="220" y="240" />
+        <di:waypoint x="260" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_CheckStartArea_Yes" bpmnElement="Flow_CheckStartArea_Yes">
+        <di:waypoint x="310" y="230" />
+        <di:waypoint x="360" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_CheckStartArea_No" bpmnElement="Flow_CheckStartArea_No">
+        <di:waypoint x="285" y="265" />
+        <di:waypoint x="285" y="510" />
+        <di:waypoint x="360" y="510" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_StartAreaTurn_To_NextTurn" bpmnElement="Flow_StartAreaTurn_To_NextTurn">
+        <di:waypoint x="1180" y="240" />
+        <di:waypoint x="1210" y="238" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_NormalTurn_To_CheckWin" bpmnElement="Flow_NormalTurn_To_CheckWin">
+        <di:waypoint x="1180" y="510" />
+        <di:waypoint x="1210" y="505" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Win_Yes" bpmnElement="Flow_Win_Yes">
+        <di:waypoint x="1260" y="505" />
+        <di:waypoint x="1340" y="505" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_Win_No" bpmnElement="Flow_Win_No">
+        <di:waypoint x="1235" y="530" />
+        <di:waypoint x="1235" y="575" />
+        <di:waypoint x="1340" y="575" />
+      </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
-
 </bpmn:definitions>

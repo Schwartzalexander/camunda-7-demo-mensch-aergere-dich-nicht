@@ -12,7 +12,7 @@ import java.util.Optional;
 public class GameService {
 
 	public static final String PROCESS_KEY = "Process_MaDn_Solo_OneFigure";
-	public static final int GOAL_POS = 10; // simple straight line board: 1..10
+	public static final int GOAL_POS = 30; // simple straight line board: 1..10
 
 	private final RuntimeService runtimeService;
 
