@@ -1,6 +1,8 @@
 package com.example.madn;
 
 import org.camunda.bpm.engine.ExternalTaskService;
+import org.camunda.bpm.engine.RuntimeService;
+import org.camunda.bpm.engine.externaltask.ExternalTask;
 import org.camunda.bpm.engine.externaltask.LockedExternalTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,9 +21,11 @@ public class ManualExternalTaskWorker {
 	private static final long LOCK_DURATION_MS = 30_000L;
 
 	private final ExternalTaskService externalTaskService;
+	private final RuntimeService runtimeService;
 
-	public ManualExternalTaskWorker(ExternalTaskService externalTaskService) {
+	public ManualExternalTaskWorker(ExternalTaskService externalTaskService, RuntimeService runtimeService) {
 		this.externalTaskService = externalTaskService;
+		this.runtimeService = runtimeService;
 	}
 
 	public boolean rollOnce(String processInstanceId) {
@@ -36,16 +40,12 @@ public class ManualExternalTaskWorker {
 		return true;
 	}
 
-	private LockedExternalTask fetchSingleDiceTask(String processInstanceId) {
-		List<LockedExternalTask> tasks = externalTaskService.fetchAndLock(1, WORKER_ID)
-				.topic("rollDiceStart", LOCK_DURATION_MS, b -> b.processInstanceIdIn(processInstanceId))
-				.topic("rollDiceNormal", LOCK_DURATION_MS, b -> b.processInstanceIdIn(processInstanceId).variables("position"))
-				.execute();
-
-		if (tasks.isEmpty()) {
-			return null;
+	private ExternalTask fetchSingleDiceTask(String processInstanceId) {
+		var task = findTaskByTopic(processInstanceId, "rollDiceStart");
+		if (task == null) {
+			task = findTaskByTopic(processInstanceId, "rollDiceNormal");
 		}
-		return tasks.get(0);
+		return lockTask(task);
 	}
 
 	private void processFollowUpTasks(String processInstanceId) {
@@ -58,20 +58,18 @@ public class ManualExternalTaskWorker {
 		}
 	}
 
-	private LockedExternalTask fetchFollowUpTask(String processInstanceId) {
-		List<LockedExternalTask> tasks = externalTaskService.fetchAndLock(1, WORKER_ID)
-				.topic("enterBoard", LOCK_DURATION_MS, b -> b.processInstanceIdIn(processInstanceId))
-				.topic("moveNormally", LOCK_DURATION_MS, b -> b.processInstanceIdIn(processInstanceId).variables("position", "dice"))
-				.topic("moveIntoGoal", LOCK_DURATION_MS, b -> b.processInstanceIdIn(processInstanceId))
-				.execute();
-
-		if (tasks.isEmpty()) {
-			return null;
+	private ExternalTask fetchFollowUpTask(String processInstanceId) {
+		var task = findTaskByTopic(processInstanceId, "enterBoard");
+		if (task == null) {
+			task = findTaskByTopic(processInstanceId, "moveNormally");
 		}
-		return tasks.get(0);
+		if (task == null) {
+			task = findTaskByTopic(processInstanceId, "moveIntoGoal");
+		}
+		return lockTask(task);
 	}
 
-	private void handleDiceTask(LockedExternalTask task) {
+	private void handleDiceTask(ExternalTask task) {
 		switch (task.getTopicName()) {
 			case "rollDiceStart" -> handleRollDiceStart(task);
 			case "rollDiceNormal" -> handleRollDiceNormal(task);
@@ -79,7 +77,7 @@ public class ManualExternalTaskWorker {
 		}
 	}
 
-	private void handleFollowUpTask(LockedExternalTask task) {
+	private void handleFollowUpTask(ExternalTask task) {
 		switch (task.getTopicName()) {
 			case "enterBoard" -> handleEnterBoard(task);
 			case "moveNormally" -> handleMoveNormally(task);
@@ -88,7 +86,7 @@ public class ManualExternalTaskWorker {
 		}
 	}
 
-	private void handleRollDiceStart(LockedExternalTask task) {
+	private void handleRollDiceStart(ExternalTask task) {
 		int d1 = 1 + rnd.nextInt(6);
 		int d2 = 1 + rnd.nextInt(6);
 		boolean pasch = d1 == d2;
@@ -102,12 +100,8 @@ public class ManualExternalTaskWorker {
 		));
 	}
 
-	private void handleRollDiceNormal(LockedExternalTask task) {
-		Map<String, Object> vars = task.getVariables();
-		if (vars == null) {
-			vars = Map.of();
-		}
-		int pos = getNumber(vars.get("position"), 1);
+	private void handleRollDiceNormal(ExternalTask task) {
+		int pos = getNumber(runtimeService.getVariable(task.getProcessInstanceId(), "position"), 1);
 
 		int dice = 1 + rnd.nextInt(6);
 		boolean wouldEnterGoal = (pos + dice) >= GameService.GOAL_POS;
@@ -123,7 +117,7 @@ public class ManualExternalTaskWorker {
 		));
 	}
 
-	private void handleEnterBoard(LockedExternalTask task) {
+	private void handleEnterBoard(ExternalTask task) {
 		log.info("[{}] Pasch! Figur geht aufs Startfeld (position=1).", task.getProcessInstanceId());
 		externalTaskService.complete(task.getId(), WORKER_ID, Map.of(
 				"inStartArea", false,
@@ -131,13 +125,9 @@ public class ManualExternalTaskWorker {
 		));
 	}
 
-	private void handleMoveNormally(LockedExternalTask task) {
-		Map<String, Object> vars = task.getVariables();
-		if (vars == null) {
-			vars = Map.of();
-		}
-		int pos = getNumber(vars.get("position"), 1);
-		int dice = getNumber(vars.get("dice"), 0);
+	private void handleMoveNormally(ExternalTask task) {
+		int pos = getNumber(runtimeService.getVariable(task.getProcessInstanceId(), "position"), 1);
+		int dice = getNumber(runtimeService.getVariable(task.getProcessInstanceId(), "dice"), 0);
 
 		int newPos = pos + dice;
 		log.info("[{}] Ziehen: {} -> {}", task.getProcessInstanceId(), pos, newPos);
@@ -145,7 +135,7 @@ public class ManualExternalTaskWorker {
 		externalTaskService.complete(task.getId(), WORKER_ID, Map.of("position", newPos));
 	}
 
-	private void handleMoveIntoGoal(LockedExternalTask task) {
+	private void handleMoveIntoGoal(ExternalTask task) {
 		log.info("[{}] Exakt! Figur zieht ins Ziel. 🏁", task.getProcessInstanceId());
 		externalTaskService.complete(task.getId(), WORKER_ID, Map.of(
 				"position", GameService.GOAL_POS,
@@ -165,5 +155,26 @@ public class ManualExternalTaskWorker {
 			}
 		}
 		return defaultValue;
+	}
+
+	private ExternalTask findTaskByTopic(String processInstanceId, String topic) {
+		return externalTaskService.createExternalTaskQuery()
+				.active()
+				.unlocked()
+				.processInstanceId(processInstanceId)
+				.topicName(topic)
+				.priorityHigherFirst()
+				.listPage(0, 1)
+				.stream()
+				.findFirst()
+				.orElse(null);
+	}
+
+	private ExternalTask lockTask(ExternalTask task) {
+		if (task == null) {
+			return null;
+		}
+		externalTaskService.lock(task.getId(), WORKER_ID, LOCK_DURATION_MS);
+		return task;
 	}
 }
