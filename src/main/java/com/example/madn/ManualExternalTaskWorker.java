@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -27,7 +28,7 @@ public class ManualExternalTaskWorker {
 	}
 
 	public boolean rollOnce(String processInstanceId) {
-		var diceTask = fetchSingleDiceTask(processInstanceId);
+		var diceTask = fetchAndLockSingleDiceTask(processInstanceId);
 		if (diceTask == null) {
 			log.info("[{}] Kein würfelbarer External Task gefunden – wahrscheinlich wartet der Prozess bereits.", processInstanceId);
 			return false;
@@ -38,17 +39,20 @@ public class ManualExternalTaskWorker {
 		return true;
 	}
 
-	private ExternalTask fetchSingleDiceTask(String processInstanceId) {
-		var task = findTaskByTopic(processInstanceId, "rollDiceStart");
+	// -------- Fetch & Lock (atomar) --------
+
+	private ExternalTask fetchAndLockSingleDiceTask(String processInstanceId) {
+		// Priorität: start vor normal
+		var task = fetchAndLockOne(processInstanceId, List.of("rollDiceStart"));
 		if (task == null) {
-			task = findTaskByTopic(processInstanceId, "rollDiceNormal");
+			task = fetchAndLockOne(processInstanceId, List.of("rollDiceNormal"));
 		}
-		return lockTask(task);
+		return task;
 	}
 
 	private void processFollowUpTasks(String processInstanceId) {
 		while (true) {
-			var followUp = fetchFollowUpTask(processInstanceId);
+			var followUp = fetchAndLockFollowUpTask(processInstanceId);
 			if (followUp == null) {
 				return;
 			}
@@ -56,16 +60,39 @@ public class ManualExternalTaskWorker {
 		}
 	}
 
-	private ExternalTask fetchFollowUpTask(String processInstanceId) {
-		var task = findTaskByTopic(processInstanceId, "enterBoard");
+	private ExternalTask fetchAndLockFollowUpTask(String processInstanceId) {
+		// Priorität: enterBoard > moveNormally > moveIntoGoal
+		var task = fetchAndLockOne(processInstanceId, List.of("enterBoard"));
 		if (task == null) {
-			task = findTaskByTopic(processInstanceId, "moveNormally");
+			task = fetchAndLockOne(processInstanceId, List.of("moveNormally"));
 		}
 		if (task == null) {
-			task = findTaskByTopic(processInstanceId, "moveIntoGoal");
+			task = fetchAndLockOne(processInstanceId, List.of("moveIntoGoal"));
 		}
-		return lockTask(task);
+		return task;
 	}
+
+	/**
+	 * Holt EXAKT EINEN Task für diese Prozessinstanz und die angegebenen Topics
+	 * und lockt ihn atomar für WORKER_ID.
+	 * <p>
+	 * WICHTIG: Liefert nur ungelockte Tasks (bzw. deren Lock abgelaufen ist).
+	 */
+	private ExternalTask fetchAndLockOne(String processInstanceId, List<String> topics) {
+		var builder = externalTaskService.fetchAndLock(1, WORKER_ID)
+				.processInstanceId(processInstanceId);
+
+		for (String topic : topics) {
+			builder = builder.topic(topic, LOCK_DURATION_MS);
+		}
+
+		return builder.execute()
+				.stream()
+				.findFirst()
+				.orElse(null);
+	}
+
+	// -------- Handling --------
 
 	private void handleDiceTask(ExternalTask task) {
 		switch (task.getTopicName()) {
@@ -153,24 +180,5 @@ public class ManualExternalTaskWorker {
 			}
 		}
 		return defaultValue;
-	}
-
-	private ExternalTask findTaskByTopic(String processInstanceId, String topic) {
-		return externalTaskService.createExternalTaskQuery()
-				.active()
-				.processInstanceId(processInstanceId)
-				.topicName(topic)
-				.listPage(0, 1)
-				.stream()
-				.findFirst()
-				.orElse(null);
-	}
-
-	private ExternalTask lockTask(ExternalTask task) {
-		if (task == null) {
-			return null;
-		}
-		externalTaskService.lock(task.getId(), WORKER_ID, LOCK_DURATION_MS);
-		return task;
 	}
 }
