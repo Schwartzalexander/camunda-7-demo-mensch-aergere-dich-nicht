@@ -62,7 +62,7 @@
         <div>inStartArea: <code>${state.inStartArea}</code> | attempts: <code>${state.attempts}</code> | position: <code>${state.position}</code> | inGoal: <code>${state.inGoal}</code></div>
         <div>Startbereich-Wurf: <code>${state.lastDice1 ?? '-'}</code> + <code>${state.lastDice2 ?? '-'}</code> (Pasch=<code>${state.isPasch ?? '-'}</code>)</div>
         <div>Normal-Wurf: <code>${state.lastDice ?? '-'}</code> (wouldEnterGoal=<code>${state.wouldEnterGoal ?? '-'}</code>, exactGoal=<code>${state.exactGoal ?? '-'}</code>)</div>
-        <p>Hinweis: Der Prozess wartet auf einen expliziten Würfel-Request (Button / REST) und läuft erst danach weiter.</p>
+        <p>Hinweis: Der Prozess wartet auf einen User Task (<code>Task_RollDice_StartArea</code> oder <code>Task_RollDice_Normal</code>). Der Würfeln-Button sucht den offenen Task per REST und completed ihn mit zufälligen Würfeln, danach läuft der Prozess weiter.</p>
         <p>Camunda Webapps: <a href="/camunda/app/welcome/default/#!/login" target="_blank">Cockpit/Tasklist</a> (demo/demo)</p>
       `;
     }
