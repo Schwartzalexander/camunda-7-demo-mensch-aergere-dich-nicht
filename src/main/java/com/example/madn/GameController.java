@@ -11,11 +11,11 @@ import org.springframework.ui.Model;
 public class GameController {
 
   private final GameService gameService;
-  private final ManualExternalTaskWorker manualExternalTaskWorker;
+  private final UserTaskRollService userTaskRollService;
 
-  public GameController(GameService gameService, ManualExternalTaskWorker manualExternalTaskWorker) {
+  public GameController(GameService gameService, UserTaskRollService userTaskRollService) {
     this.gameService = gameService;
-    this.manualExternalTaskWorker = manualExternalTaskWorker;
+    this.userTaskRollService = userTaskRollService;
   }
 
   @GetMapping("/")
@@ -48,10 +48,10 @@ public class GameController {
       return ResponseEntity.notFound().build();
     }
 
-    boolean rolled = manualExternalTaskWorker.rollOnce(processInstanceId);
+    boolean rolled = userTaskRollService.rollOnce(processInstanceId);
     if (!rolled) {
       return ResponseEntity.status(409).body(Map.of(
-          "message", "Kein würfelbarer External Task gefunden – der Prozess wartet vermutlich bereits."
+          "message", "Kein würfelbarer User Task gefunden – der Prozess wartet vermutlich bereits."
       ));
     }
 
