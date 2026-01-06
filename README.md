@@ -13,13 +13,13 @@ Eine kleine Camunda-7-Demo, die den Spielablauf von _Mensch ärgere dich nicht_ 
 mvn -U clean spring-boot:run
 ```
 
-Die External-Task-Worker starten mit 3 Sekunden Verzögerung, damit der eingebettete REST-Endpunkt des Camunda-Engines sicher verfügbar ist.
+Das Spiel wartet auf einen Klick auf **Würfeln** (oder einen entsprechenden REST-Request), bevor die External-Tasks verarbeitet werden.
 
 ## Nutzung
 
 1. Öffne die Spiel-UI unter http://localhost:8080/.
 2. Klicke auf **Neues Spiel starten**, um eine neue Prozessinstanz anzulegen.
-3. Mit **Würfeln** kannst du den Status manuell aktualisieren; der Prozess würfelt und bewegt die Figur automatisch über die External-Task-Worker.
+3. Mit **Würfeln** (oder einem `POST /api/roll?processInstanceId=...`) wird genau ein Würfelvorgang ausgelöst; nur die zugehörigen External Tasks werden abgearbeitet.
 4. Der Spielstand (Position, Würfe, Pasch-Infos) wird im UI angezeigt. Sobald die Figur das Ziel erreicht, stoppt die Instanz.
 
 ## Weitere Tools

@@ -62,7 +62,7 @@
         <div>inStartArea: <code>${state.inStartArea}</code> | attempts: <code>${state.attempts}</code> | position: <code>${state.position}</code> | inGoal: <code>${state.inGoal}</code></div>
         <div>Startbereich-Wurf: <code>${state.lastDice1 ?? '-'}</code> + <code>${state.lastDice2 ?? '-'}</code> (Pasch=<code>${state.isPasch ?? '-'}</code>)</div>
         <div>Normal-Wurf: <code>${state.lastDice ?? '-'}</code> (wouldEnterGoal=<code>${state.wouldEnterGoal ?? '-'}</code>, exactGoal=<code>${state.exactGoal ?? '-'}</code>)</div>
-        <p>Hinweis: Der Prozess läuft automatisch über External-Task-Worker im selben Spring Boot Prozess. Details siehst du im Log.</p>
+        <p>Hinweis: Der Prozess wartet auf einen expliziten Würfel-Request (Button / REST) und läuft erst danach weiter.</p>
         <p>Camunda Webapps: <a href="/camunda/app/welcome/default/#!/login" target="_blank">Cockpit/Tasklist</a> (demo/demo)</p>
       `;
     }
@@ -95,12 +95,30 @@
     });
 
     document.getElementById('rollBtn').addEventListener('click', async () => {
-      if (!document.getElementById('pid').textContent.trim()) {
+      const pid = document.getElementById('pid').textContent.trim();
+      if (!pid) {
         document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
         return;
       }
       document.getElementById('status').textContent = 'Würfeln...';
-      await fetchState();
+      const res = await fetch(`/api/roll?processInstanceId=${encodeURIComponent(pid)}`, { method: 'POST' });
+      if (res.status === 404) {
+        document.getElementById('status').textContent = 'Prozess nicht gefunden. Starte ein neues Spiel.';
+        return;
+      }
+      if (res.status === 409) {
+        const data = await res.json();
+        document.getElementById('status').textContent = data.message ?? 'Kein würfelbarer Task gefunden.';
+        return;
+      }
+      if (!res.ok) {
+        document.getElementById('status').textContent = 'Fehler beim Würfeln.';
+        return;
+      }
+      const state = await res.json();
+      document.getElementById('status').textContent = state.inGoal ? 'Im Ziel 🎉' : 'Gewürfelt.';
+      renderBoard(state);
+      renderMeta(state);
     });
 
     // initial render
