@@ -8,30 +8,40 @@
         body { font-family: system-ui, sans-serif; margin: 24px; }
         .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
         button { padding: 10px 14px; cursor: pointer; }
-        .board { display: grid; grid-template-columns: repeat(30, 44px); gap: 8px; margin-top: 18px; }
-        .cell { width: 44px; height: 44px; border: 2px solid #333; border-radius: 10px; display:flex; align-items:center; justify-content:center; position: relative; }
+        .board-wrapper { margin-top: 18px; border: 1px solid #ccc; border-radius: 12px; padding: 12px; max-width: 620px; }
+        .board { position: relative; width: 560px; height: 560px; margin: 0 auto; }
+        .cell { width: 34px; height: 34px; border: 2px solid #666; border-radius: 50%; position: absolute; transform: translate(-50%, -50%); background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #444; }
         .cell.goal { border-style: dashed; }
-        .token { width: 18px; height: 18px; border-radius: 50%; background: #333; position:absolute; }
-        .meta { margin-top: 16px; }
+        .cell.home { border-color: #aaa; background: #f8f8f8; }
+        .token { width: 18px; height: 18px; border-radius: 50%; position: absolute; transform: translate(-50%, -50%); cursor: pointer; border: 2px solid #0003; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+        .token.disabled { cursor: not-allowed; opacity: 0.4; }
+        .meta { margin-top: 16px; max-width: 720px; }
         code { background: #f3f3f3; padding: 2px 6px; border-radius: 6px; }
+        .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #333; }
     </style>
 </head>
 <body>
-<h1>Mensch ärgere dich nicht (Solo, 1 Figur)</h1>
+<h1>Mensch ärgere dich nicht – Multiplayer</h1>
 
 <div class="row">
+    <label>Spieler: <input id="playerCount" type="number" min="2" th:attr="max=${maxPlayers}" value="2" style="width: 60px"/></label>
     <button id="startBtn">Neues Spiel starten</button>
     <button id="rollBtn">Würfeln</button>
     <div>ProcessInstanceId: <code id="pid" th:text="${processInstanceId}"> </code></div>
     <div id="status"></div>
 </div>
 
-<div class="board" id="board"></div>
+<div class="board-wrapper">
+    <div id="turnInfo"></div>
+    <div class="board" id="board"></div>
+    <div class="legend" id="legend"></div>
+</div>
 
 <div class="meta" id="meta"></div>
 
 <script>
-    const GOAL_POS = 30;
     const POLL_INTERVAL_MS = 1000;
 
     function ensurePoller() {
@@ -40,31 +50,126 @@
       }
     }
 
+    function polarToXY(center, radius, angle) {
+      const rad = angle * Math.PI / 180;
+      return {
+        x: center.x + radius * Math.cos(rad),
+        y: center.y + radius * Math.sin(rad)
+      };
+    }
+
+    function computeLayout(boardSize, goalLength) {
+      const center = { x: 280, y: 280 };
+      const mainRadius = 230;
+      const goalRadiusStep = mainRadius / 5;
+      const homesRadius = mainRadius + 40;
+      const main = [];
+      for (let i = 0; i < boardSize; i++) {
+        const angle = (360 / boardSize) * i - 90; // start at top
+        main.push(polarToXY(center, mainRadius, angle));
+      }
+      return { center, main, mainRadius, goalRadiusStep, homesRadius };
+    }
+
     function renderBoard(state) {
       const board = document.getElementById('board');
       board.innerHTML = '';
-      for (let i = 1; i <= GOAL_POS; i++) {
+      const layout = computeLayout(state.boardSize, state.goalLength);
+      const boardState = state.boardState || {};
+      const players = state.players || [];
+
+      // main track
+      layout.main.forEach((pos, idx) => {
         const cell = document.createElement('div');
-        cell.className = 'cell' + (i === GOAL_POS ? ' goal' : '');
-        cell.textContent = i;
-        if (state.position === i) {
+        cell.className = 'cell';
+        cell.style.left = `${pos.x}px`;
+        cell.style.top = `${pos.y}px`;
+        cell.title = `Feld ${idx}`;
+        board.appendChild(cell);
+      });
+
+      // goal and home cells + tokens
+      players.forEach((player, pIndex) => {
+        const startIndex = player.startIndex || 0;
+        const startAngle = (360 / state.boardSize) * startIndex - 90;
+
+        // goal cells
+        for (let i = 0; i < state.goalLength; i++) {
+          const goalPos = polarToXY(layout.center, layout.mainRadius - layout.goalRadiusStep * (i + 1), startAngle);
+          const goalCell = document.createElement('div');
+          goalCell.className = 'cell goal';
+          goalCell.style.left = `${goalPos.x}px`;
+          goalCell.style.top = `${goalPos.y}px`;
+          goalCell.style.borderColor = player.color;
+          board.appendChild(goalCell);
+        }
+
+        // home cells
+        for (let i = 0; i < 4; i++) {
+          const offset = (i - 1.5) * 18;
+          const homePos = polarToXY(layout.center, layout.homesRadius, startAngle);
+          const homeCell = document.createElement('div');
+          homeCell.className = 'cell home';
+          homeCell.style.left = `${homePos.x + offset}px`;
+          homeCell.style.top = `${homePos.y + offset}px`;
+          homeCell.style.borderColor = player.color;
+          board.appendChild(homeCell);
+        }
+
+        const pieces = boardState[player.id] || [];
+        pieces.forEach((piece, i) => {
+          const status = piece.status;
+          let target = null;
+          if (status === 'BOARD') {
+            const steps = piece.index ?? 0;
+            const absolute = (startIndex + steps) % state.boardSize;
+            target = layout.main[absolute];
+          } else if (status === 'GOAL') {
+            const goalPos = polarToXY(layout.center, layout.mainRadius - layout.goalRadiusStep * (piece.index + 1), startAngle);
+            target = goalPos;
+          } else {
+            const offset = (i - 1.5) * 18;
+            target = polarToXY(layout.center, layout.homesRadius, startAngle);
+            target.x += offset;
+            target.y += offset;
+          }
+          if (!target) return;
           const token = document.createElement('div');
           token.className = 'token';
-          cell.appendChild(token);
-        }
-        board.appendChild(cell);
-      }
+          if (state.currentPlayerId !== player.id) {
+            token.classList.add('disabled');
+          }
+          token.style.left = `${target.x}px`;
+          token.style.top = `${target.y}px`;
+          token.style.background = player.color;
+          token.title = `${player.name} Figur ${i}`;
+          token.addEventListener('click', () => {
+            if (state.currentPlayerId !== player.id) return;
+            choosePiece(i);
+          });
+          board.appendChild(token);
+        });
+      });
     }
 
     function renderMeta(state) {
       const meta = document.getElementById('meta');
+      const players = state.players || [];
+      const boardState = state.boardState || {};
+      const winner = state.winnerPlayerId ? players.find(p => p.id === state.winnerPlayerId)?.name : null;
       meta.innerHTML = `
-        <div>inStartArea: <code>${state.inStartArea}</code> | attempts: <code>${state.attempts}</code> | position: <code>${state.position}</code> | inGoal: <code>${state.inGoal}</code></div>
-        <div>Startbereich-Wurf: <code>${state.lastDice1 ?? '-'}</code> + <code>${state.lastDice2 ?? '-'}</code> (Pasch=<code>${state.isPasch ?? '-'}</code>)</div>
-        <div>Normal-Wurf: <code>${state.lastDice ?? '-'}</code> (wouldEnterGoal=<code>${state.wouldEnterGoal ?? '-'}</code>, exactGoal=<code>${state.exactGoal ?? '-'}</code>)</div>
-        <p>Hinweis: Der Prozess wartet auf einen User Task (<code>Task_RollDice_StartArea</code> oder <code>Task_RollDice_Normal</code>). Der Würfeln-Button sucht den offenen Task per REST und completed ihn mit zufälligen Würfeln, danach läuft der Prozess weiter.</p>
+        <div>Aktueller Spieler: <code>${state.currentPlayerId ?? '-'}</code> | Wurf: <code>${state.dice ?? '-'}</code> | Pasch: <code>${state.isPasch ?? '-'}</code></div>
+        <div>Ausgewählte Figur: <code>${state.chosenPieceId ?? '-'}</code> | Move möglich: <code>${state.moveWasPossible ?? '-'}</code> | Geschmissen: <code>${state.kicked ?? '-'}</code></div>
+        <div>Spieler: ${players.map(p => `${p.name} (${p.id})`).join(', ')}</div>
+        <div>BoardState: <code>${JSON.stringify(boardState)}</code></div>
+        ${winner ? `<p>🎉 Gewinner: ${winner}</p>` : ''}
         <p>Camunda Webapps: <a href="/camunda/app/welcome/default/#!/login" target="_blank">Cockpit/Tasklist</a> (demo/demo)</p>
       `;
+
+      const legend = document.getElementById('legend');
+      legend.innerHTML = players.map(p => `
+        <div class="legend-item"><span class="dot" style="background:${p.color}"></span>${p.name}</div>
+      `).join('');
     }
 
     async function fetchState() {
@@ -79,14 +184,16 @@
       }
       if (!res.ok) return;
       const state = await res.json();
-      document.getElementById('status').textContent = state.inGoal ? 'Im Ziel 🎉' : 'Läuft...';
+      document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Läuft...';
+      document.getElementById('turnInfo').textContent = state.currentPlayerId ? `Zug: ${state.currentPlayerId}` : '';
       renderBoard(state);
       renderMeta(state);
     }
 
     document.getElementById('startBtn').addEventListener('click', async () => {
       document.getElementById('status').textContent = 'Starting...';
-      const res = await fetch('/api/start', { method: 'POST' });
+      const players = parseInt(document.getElementById('playerCount').value, 10) || 2;
+      const res = await fetch(`/api/start?players=${players}`, { method: 'POST' });
       const data = await res.json();
       document.getElementById('pid').textContent = data.processInstanceId;
       document.getElementById('status').textContent = 'Running';
@@ -116,10 +223,25 @@
         return;
       }
       const state = await res.json();
-      document.getElementById('status').textContent = state.inGoal ? 'Im Ziel 🎉' : 'Gewürfelt.';
+      document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Gewürfelt.';
       renderBoard(state);
       renderMeta(state);
     });
+
+    async function choosePiece(pieceId) {
+      const pid = document.getElementById('pid').textContent.trim();
+      if (!pid) return;
+      document.getElementById('status').textContent = `Figur ${pieceId} wählen...`;
+      const res = await fetch(`/api/choose?processInstanceId=${encodeURIComponent(pid)}&pieceId=${pieceId}`, { method: 'POST' });
+      if (!res.ok) {
+        document.getElementById('status').textContent = 'Keine Auswahl möglich.';
+        return;
+      }
+      const state = await res.json();
+      document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Figur gezogen.';
+      renderBoard(state);
+      renderMeta(state);
+    }
 
     // initial render
     fetchState();

@@ -1,6 +1,5 @@
 package com.example.madn;
 
-import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
 import org.camunda.bpm.engine.task.Task;
 import org.slf4j.Logger;
@@ -18,11 +17,9 @@ public class UserTaskRollService {
 	private static final Random rnd = new Random();
 
 	private final TaskService taskService;
-	private final RuntimeService runtimeService;
 
-	public UserTaskRollService(TaskService taskService, RuntimeService runtimeService) {
+	public UserTaskRollService(TaskService taskService) {
 		this.taskService = taskService;
-		this.runtimeService = runtimeService;
 	}
 
 	public boolean rollOnce(String processInstanceId) {
@@ -39,12 +36,7 @@ public class UserTaskRollService {
 	// -------- Find open user tasks --------
 
 	private Optional<Task> findSingleDiceTask(String processInstanceId) {
-		// Priorität: Startbereich vor normalem Wurf
-		var startTask = findTask(processInstanceId, "Task_RollDice_StartArea");
-		if (startTask.isPresent()) {
-			return startTask;
-		}
-		return findTask(processInstanceId, "Task_RollDice_Normal");
+		return findTask(processInstanceId, "Task_RollDice");
 	}
 
 	private Optional<Task> findTask(String processInstanceId, String taskDefinitionKey) {
@@ -63,54 +55,30 @@ public class UserTaskRollService {
 
 	private void handleDiceTask(Task task) {
 		switch (task.getTaskDefinitionKey()) {
-			case "Task_RollDice_StartArea" -> handleRollDiceStart(task);
-			case "Task_RollDice_Normal" -> handleRollDiceNormal(task);
+			case "Task_RollDice" -> handleRollDice(task);
 			default -> log.warn("Unbekannter Dice-Task {}", task.getTaskDefinitionKey());
 		}
 	}
 
-	private void handleRollDiceStart(Task task) {
-		int d1 = 1 + rnd.nextInt(6);
-		int d2 = 1 + rnd.nextInt(6);
-		boolean pasch = d1 == d2;
+	private void handleRollDice(Task task) {
+		int dice = 1 + rnd.nextInt(6);
+		boolean pasch = dice == 6;
 
-		log.info("[{}] Startbereich würfeln: {} + {} => Pasch={}", task.getProcessInstanceId(), d1, d2, pasch);
+		log.info("[{}] Würfeln: {} (Pasch={})", task.getProcessInstanceId(), dice, pasch);
 
 		taskService.complete(task.getId(), Map.of(
-				"dice1", d1,
-				"dice2", d2,
+				"dice", dice,
 				"isPasch", pasch
 		));
 	}
 
-	private void handleRollDiceNormal(Task task) {
-		int pos = getNumber(runtimeService.getVariable(task.getProcessInstanceId(), "position"), 1);
-
-		int dice = 1 + rnd.nextInt(6);
-		boolean wouldEnterGoal = (pos + dice) >= GameService.GOAL_POS;
-		boolean exactGoal = (pos + dice) == GameService.GOAL_POS;
-
-		log.info("[{}] Würfeln: {} (position={}) wouldEnterGoal={} exactGoal={}",
-				task.getProcessInstanceId(), dice, pos, wouldEnterGoal, exactGoal);
-
-		taskService.complete(task.getId(), Map.of(
-				"dice", dice,
-				"wouldEnterGoal", wouldEnterGoal,
-				"exactGoal", exactGoal
-		));
-	}
-
-	private int getNumber(Object value, int defaultValue) {
-		if (value instanceof Number number) {
-			return number.intValue();
+	public boolean choosePiece(String processInstanceId, int pieceId) {
+		var chooseTask = findTask(processInstanceId, "Task_ChoosePiece");
+		if (chooseTask.isEmpty()) {
+			log.info("[{}] Kein Auswahl-Task gefunden – wahrscheinlich wird noch gewürfelt.", processInstanceId);
+			return false;
 		}
-		if (value instanceof String str && !str.isBlank()) {
-			try {
-				return Integer.parseInt(str);
-			} catch (NumberFormatException ignored) {
-				// ignore and fall through to default
-			}
-		}
-		return defaultValue;
+		taskService.complete(chooseTask.get().getId(), Map.of("chosenPieceId", pieceId));
+		return true;
 	}
 }
