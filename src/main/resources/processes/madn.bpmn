@@ -22,10 +22,11 @@
         <bpmn:outgoing>Flow_RollDice_StartArea</bpmn:outgoing>
       </bpmn:serviceTask>
       <bpmn:sequenceFlow id="Flow_InitCounter" sourceRef="StartEvent_StartAreaTurn" targetRef="Task_InitCounter" />
-      <bpmn:serviceTask id="Task_RollDice_StartArea" name="Würfeln (Startbereich)" camunda:type="external" camunda:topic="rollDiceStart">
-        <bpmn:incoming>Flow_RollDice_StartArea</bpmn:incoming>
-        <bpmn:outgoing>Flow_To_CheckPasch</bpmn:outgoing>
-      </bpmn:serviceTask>
+        <bpmn:userTask id="Task_RollDice_StartArea"
+                       name="Würfeln (Startbereich)">
+          <bpmn:incoming>Flow_RollDice_StartArea</bpmn:incoming>
+          <bpmn:outgoing>Flow_To_CheckPasch</bpmn:outgoing>
+        </bpmn:userTask>
       <bpmn:sequenceFlow id="Flow_RollDice_StartArea" sourceRef="Task_InitCounter" targetRef="Task_RollDice_StartArea" />
       <bpmn:exclusiveGateway id="Gateway_Pasch" name="Pasch?">
         <bpmn:incoming>Flow_To_CheckPasch</bpmn:incoming>
@@ -74,10 +75,11 @@
       <bpmn:startEvent id="StartEvent_NormalTurn" name="Normaler Zug beginnt">
         <bpmn:outgoing>Flow_RollDice_Normal</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:serviceTask id="Task_RollDice_Normal" name="Würfeln" camunda:type="external" camunda:topic="rollDiceNormal">
+      <bpmn:userTask id="Task_RollDice_Normal"
+                     name="Würfeln">
         <bpmn:incoming>Flow_RollDice_Normal</bpmn:incoming>
         <bpmn:outgoing>Flow_CheckWouldEnterGoal</bpmn:outgoing>
-      </bpmn:serviceTask>
+      </bpmn:userTask>
       <bpmn:sequenceFlow id="Flow_RollDice_Normal" sourceRef="StartEvent_NormalTurn" targetRef="Task_RollDice_Normal" />
       <bpmn:exclusiveGateway id="Gateway_WouldEnterGoal" name="Zug würde ins Ziel führen?">
         <bpmn:incoming>Flow_CheckWouldEnterGoal</bpmn:incoming>
