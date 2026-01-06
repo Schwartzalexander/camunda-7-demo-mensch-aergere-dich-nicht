@@ -3,12 +3,10 @@ package com.example.madn;
 import org.camunda.bpm.engine.ExternalTaskService;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.externaltask.ExternalTask;
-import org.camunda.bpm.engine.externaltask.LockedExternalTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -160,10 +158,8 @@ public class ManualExternalTaskWorker {
 	private ExternalTask findTaskByTopic(String processInstanceId, String topic) {
 		return externalTaskService.createExternalTaskQuery()
 				.active()
-				.unlocked()
 				.processInstanceId(processInstanceId)
 				.topicName(topic)
-				.priorityHigherFirst()
 				.listPage(0, 1)
 				.stream()
 				.findFirst()
