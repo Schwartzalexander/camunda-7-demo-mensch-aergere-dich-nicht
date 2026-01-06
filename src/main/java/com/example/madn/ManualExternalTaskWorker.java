@@ -2,12 +2,11 @@ package com.example.madn;
 
 import org.camunda.bpm.engine.ExternalTaskService;
 import org.camunda.bpm.engine.RuntimeService;
-import org.camunda.bpm.engine.externaltask.ExternalTask;
+import org.camunda.bpm.engine.externaltask.LockedExternalTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -28,7 +27,7 @@ public class ManualExternalTaskWorker {
 	}
 
 	public boolean rollOnce(String processInstanceId) {
-		var diceTask = fetchAndLockSingleDiceTask(processInstanceId);
+		var diceTask = fetchAndLockSingleDiceTask();
 		if (diceTask == null) {
 			log.info("[{}] Kein würfelbarer External Task gefunden – wahrscheinlich wartet der Prozess bereits.", processInstanceId);
 			return false;
@@ -40,11 +39,11 @@ public class ManualExternalTaskWorker {
 
 	// -------- Fetch & Lock (atomar) --------
 
-	private ExternalTask fetchAndLockSingleDiceTask(String processInstanceId) {
+	private LockedExternalTask fetchAndLockSingleDiceTask() {
 		// Priorität: start vor normal
-		var task = fetchAndLockOne(processInstanceId, List.of("rollDiceStart"));
+		var task = fetchAndLockOne("rollDiceStart");
 		if (task == null) {
-			task = fetchAndLockOne(processInstanceId, List.of("rollDiceNormal"));
+			task = fetchAndLockOne("rollDiceNormal");
 		}
 		return task;
 	}
@@ -55,15 +54,10 @@ public class ManualExternalTaskWorker {
 	 * <p>
 	 * WICHTIG: Liefert nur ungelockte Tasks (bzw. deren Lock abgelaufen ist).
 	 */
-	private ExternalTask fetchAndLockOne(String processInstanceId, List<String> topics) {
-		var builder = externalTaskService.fetchAndLock(1, WORKER_ID)
-				.processInstanceId(processInstanceId);
-
-		for (String topic : topics) {
-			builder = builder.topic(topic, LOCK_DURATION_MS);
-		}
-
-		return builder.execute()
+	private LockedExternalTask fetchAndLockOne(String topic) {
+		return externalTaskService.fetchAndLock(1, WORKER_ID)
+				.topic(topic, LOCK_DURATION_MS)
+				.execute()
 				.stream()
 				.findFirst()
 				.orElse(null);
@@ -71,7 +65,7 @@ public class ManualExternalTaskWorker {
 
 	// -------- Handling --------
 
-	private void handleDiceTask(ExternalTask task) {
+	private void handleDiceTask(LockedExternalTask task) {
 		switch (task.getTopicName()) {
 			case "rollDiceStart" -> handleRollDiceStart(task);
 			case "rollDiceNormal" -> handleRollDiceNormal(task);
@@ -79,7 +73,7 @@ public class ManualExternalTaskWorker {
 		}
 	}
 
-	private void handleRollDiceStart(ExternalTask task) {
+	private void handleRollDiceStart(LockedExternalTask task) {
 		int d1 = 1 + rnd.nextInt(6);
 		int d2 = 1 + rnd.nextInt(6);
 		boolean pasch = d1 == d2;
@@ -93,7 +87,7 @@ public class ManualExternalTaskWorker {
 		));
 	}
 
-	private void handleRollDiceNormal(ExternalTask task) {
+	private void handleRollDiceNormal(LockedExternalTask task) {
 		int pos = getNumber(runtimeService.getVariable(task.getProcessInstanceId(), "position"), 1);
 
 		int dice = 1 + rnd.nextInt(6);
