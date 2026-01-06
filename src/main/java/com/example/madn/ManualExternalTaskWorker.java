@@ -35,7 +35,6 @@ public class ManualExternalTaskWorker {
 		}
 
 		handleDiceTask(diceTask);
-		processFollowUpTasks(processInstanceId);
 		return true;
 	}
 
@@ -46,28 +45,6 @@ public class ManualExternalTaskWorker {
 		var task = fetchAndLockOne(processInstanceId, List.of("rollDiceStart"));
 		if (task == null) {
 			task = fetchAndLockOne(processInstanceId, List.of("rollDiceNormal"));
-		}
-		return task;
-	}
-
-	private void processFollowUpTasks(String processInstanceId) {
-		while (true) {
-			var followUp = fetchAndLockFollowUpTask(processInstanceId);
-			if (followUp == null) {
-				return;
-			}
-			handleFollowUpTask(followUp);
-		}
-	}
-
-	private ExternalTask fetchAndLockFollowUpTask(String processInstanceId) {
-		// Priorität: enterBoard > moveNormally > moveIntoGoal
-		var task = fetchAndLockOne(processInstanceId, List.of("enterBoard"));
-		if (task == null) {
-			task = fetchAndLockOne(processInstanceId, List.of("moveNormally"));
-		}
-		if (task == null) {
-			task = fetchAndLockOne(processInstanceId, List.of("moveIntoGoal"));
 		}
 		return task;
 	}
@@ -102,15 +79,6 @@ public class ManualExternalTaskWorker {
 		}
 	}
 
-	private void handleFollowUpTask(ExternalTask task) {
-		switch (task.getTopicName()) {
-			case "enterBoard" -> handleEnterBoard(task);
-			case "moveNormally" -> handleMoveNormally(task);
-			case "moveIntoGoal" -> handleMoveIntoGoal(task);
-			default -> log.warn("Unbekannter Folge-Task {}", task.getTopicName());
-		}
-	}
-
 	private void handleRollDiceStart(ExternalTask task) {
 		int d1 = 1 + rnd.nextInt(6);
 		int d2 = 1 + rnd.nextInt(6);
@@ -139,32 +107,6 @@ public class ManualExternalTaskWorker {
 				"dice", dice,
 				"wouldEnterGoal", wouldEnterGoal,
 				"exactGoal", exactGoal
-		));
-	}
-
-	private void handleEnterBoard(ExternalTask task) {
-		log.info("[{}] Pasch! Figur geht aufs Startfeld (position=1).", task.getProcessInstanceId());
-		externalTaskService.complete(task.getId(), WORKER_ID, Map.of(
-				"inStartArea", false,
-				"position", 1
-		));
-	}
-
-	private void handleMoveNormally(ExternalTask task) {
-		int pos = getNumber(runtimeService.getVariable(task.getProcessInstanceId(), "position"), 1);
-		int dice = getNumber(runtimeService.getVariable(task.getProcessInstanceId(), "dice"), 0);
-
-		int newPos = pos + dice;
-		log.info("[{}] Ziehen: {} -> {}", task.getProcessInstanceId(), pos, newPos);
-
-		externalTaskService.complete(task.getId(), WORKER_ID, Map.of("position", newPos));
-	}
-
-	private void handleMoveIntoGoal(ExternalTask task) {
-		log.info("[{}] Exakt! Figur zieht ins Ziel. 🏁", task.getProcessInstanceId());
-		externalTaskService.complete(task.getId(), WORKER_ID, Map.of(
-				"position", GameService.GOAL_POS,
-				"inGoal", true
 		));
 	}
 

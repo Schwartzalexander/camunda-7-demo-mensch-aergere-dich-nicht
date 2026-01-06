@@ -33,7 +33,7 @@
         <bpmn:outgoing>Flow_Pasch_No</bpmn:outgoing>
       </bpmn:exclusiveGateway>
       <bpmn:sequenceFlow id="Flow_To_CheckPasch" sourceRef="Task_RollDice_StartArea" targetRef="Gateway_Pasch" />
-      <bpmn:serviceTask id="Task_EnterBoard" name="Figur aufs Spielfeld setzen (Startfeld)" camunda:type="external" camunda:topic="enterBoard">
+      <bpmn:serviceTask id="Task_EnterBoard" name="Figur aufs Spielfeld setzen (Startfeld)" camunda:class="com.example.madn.camunda.delegate.EnterBoardDelegate">
         <bpmn:incoming>Flow_Pasch_Yes</bpmn:incoming>
         <bpmn:outgoing>Flow_EndStartAreaTurnSuccess</bpmn:outgoing>
       </bpmn:serviceTask>
@@ -85,7 +85,7 @@
         <bpmn:outgoing>Flow_WouldEnterGoal_Yes</bpmn:outgoing>
       </bpmn:exclusiveGateway>
       <bpmn:sequenceFlow id="Flow_CheckWouldEnterGoal" sourceRef="Task_RollDice_Normal" targetRef="Gateway_WouldEnterGoal" />
-      <bpmn:serviceTask id="Task_MoveNormally" name="Figur um Augenzahl ziehen" camunda:type="external" camunda:topic="moveNormally">
+      <bpmn:serviceTask id="Task_MoveNormally" name="Figur um Augenzahl ziehen" camunda:class="com.example.madn.camunda.delegate.MoveNormallyDelegate">
         <bpmn:incoming>Flow_WouldEnterGoal_No</bpmn:incoming>
         <bpmn:outgoing>Flow_NormalMove_To_End</bpmn:outgoing>
       </bpmn:serviceTask>
@@ -100,7 +100,7 @@
       <bpmn:sequenceFlow id="Flow_WouldEnterGoal_Yes" sourceRef="Gateway_WouldEnterGoal" targetRef="Gateway_ExactGoal">
         <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${wouldEnterGoal == true}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
-      <bpmn:serviceTask id="Task_MoveIntoGoal" name="Figur ins Ziel ziehen" camunda:type="external" camunda:topic="moveIntoGoal">
+      <bpmn:serviceTask id="Task_MoveIntoGoal" name="Figur ins Ziel ziehen" camunda:class="com.example.madn.camunda.delegate.MoveIntoGoalDelegate">
         <bpmn:incoming>Flow_ExactGoal_Yes</bpmn:incoming>
         <bpmn:outgoing>Flow_GoalMove_To_End</bpmn:outgoing>
       </bpmn:serviceTask>
