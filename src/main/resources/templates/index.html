@@ -206,7 +206,7 @@
       const boardState = state.boardState || {};
       const winner = state.winnerPlayerId ? players.find(p => p.id === state.winnerPlayerId)?.name : null;
       meta.innerHTML = `
-        <div>Aktueller Spieler: <code>${state.currentPlayerId ?? '-'}</code> | Wurf: <code>${state.dice ?? '-'}</code> | Pasch: <code>${state.isPasch ?? '-'}</code></div>
+        <div>Aktueller Spieler: <code>${state.currentPlayerId ?? '-'}</code> | Wurf: <code>${state.dice1 ?? '-'}</code> und <code>${state.dice2 ?? '-'}</code> | Pasch: <code>${state.isPasch ?? '-'}</code></div>
         <div>Ausgewählte Figur: <code>${state.chosenPieceId ?? '-'}</code> | Move möglich: <code>${state.moveWasPossible ?? '-'}</code> | Geschmissen: <code>${state.kicked ?? '-'}</code></div>
         <div>Spieler: ${players.map(p => `${p.name} (${p.id})`).join(', ')}</div>
         <div>BoardState: <code>${JSON.stringify(boardState)}</code></div>

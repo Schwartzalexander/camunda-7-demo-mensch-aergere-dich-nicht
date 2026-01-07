@@ -4,12 +4,7 @@ import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class GameService {
@@ -71,7 +66,6 @@ public class GameService {
 		state.put("boardState", vars.getOrDefault("boardState", Map.of()));
 		state.put("boardSize", BOARD_SIZE);
 		state.put("goalLength", GOAL_LENGTH);
-		state.put("dice", vars.getOrDefault("dice", null));
 		state.put("dice1", vars.getOrDefault("dice1", null));
 		state.put("dice2", vars.getOrDefault("dice2", null));
 		state.put("isPasch", vars.getOrDefault("isPasch", null));

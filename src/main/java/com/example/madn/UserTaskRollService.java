@@ -61,13 +61,15 @@ public class UserTaskRollService {
 	}
 
 	private void handleRollDice(Task task) {
-		int dice = 1 + rnd.nextInt(6);
-		boolean pasch = dice > 3;
+		int dice1 = 1 + rnd.nextInt(6);
+		int dice2 = 1 + rnd.nextInt(6);
+		boolean pasch = dice1 == dice2;
 
-		log.info("[{}] Würfeln: {} (Pasch={})", task.getProcessInstanceId(), dice, pasch);
+		log.info("[{}] Würfeln: {} und {} (Pasch={})", task.getProcessInstanceId(), dice1, dice2, pasch);
 
 		taskService.complete(task.getId(), Map.of(
-				"dice", dice,
+				"dice1", dice1,
+				"dice2", dice2,
 				"isPasch", pasch
 		));
 	}
