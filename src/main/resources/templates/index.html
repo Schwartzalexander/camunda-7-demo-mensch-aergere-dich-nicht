@@ -30,7 +30,7 @@
     <button id="startBtn">Neues Spiel starten</button>
     <button id="rollBtn">Würfeln</button>
     <button onclick="chooseFrontPiece()">Ziehe vorderste Figur</button>
-    <button id="autoBtn">Automatik</button>
+    <button id="autoBtn">Automatik: Würfeln</button>
 
     <div>ProcessInstanceId: <code id="pid" th:text="${processInstanceId}"> </code></div>
     <div id="status"></div>
@@ -49,6 +49,12 @@
     let lastState = null;
     let __autoNext = 'ROLL';
 
+    function updateAutoButton() {
+      const btn = document.getElementById('autoBtn');
+      btn.textContent = __autoNext === 'ROLL'
+        ? 'Automatik: Würfeln'
+        : 'Automatik: Ziehen';
+    }
     function findFrontPieceId(state) {
       if (!state?.currentPlayerId) return null;
 
@@ -242,6 +248,9 @@
       document.getElementById('status').textContent = 'Running';
       ensurePoller();
       await fetchState();
+      __autoNext = 'ROLL';
+      updateAutoButton();
+
     });
 
     document.getElementById('rollBtn').addEventListener('click', async () => {
@@ -275,7 +284,10 @@
         await chooseFrontPiece();
         __autoNext = 'ROLL';
       }
+
+      updateAutoButton();
     });
+
 
     async function doRoll(pid) {
       document.getElementById('status').textContent = 'Würfeln...';
@@ -300,6 +312,8 @@
       document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Gewürfelt.';
       renderBoard(state);
       renderMeta(state);
+      __autoNext = 'CHOOSE';
+      updateAutoButton();
     }
 
 
@@ -313,11 +327,12 @@
         return;
       }
       const state = await res.json();
+      lastState = state;
+      __autoNext = 'ROLL';
+      updateAutoButton();
       document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Figur gezogen.';
       renderBoard(state);
       renderMeta(state);
-      lastState = state;
-      __autoNext = 'ROLL';
     }
 
     // initial render
