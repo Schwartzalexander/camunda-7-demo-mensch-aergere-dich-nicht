@@ -29,6 +29,9 @@
     <label>Spieler: <input id="playerCount" type="number" min="2" th:attr="max=${maxPlayers}" value="2" style="width: 60px"/></label>
     <button id="startBtn">Neues Spiel starten</button>
     <button id="rollBtn">Würfeln</button>
+    <button onclick="chooseFrontPiece()">Ziehe vorderste Figur</button>
+    <button id="autoBtn">Automatik</button>
+
     <div>ProcessInstanceId: <code id="pid" th:text="${processInstanceId}"> </code></div>
     <div id="status"></div>
 </div>
@@ -43,6 +46,45 @@
 
 <script>
     const POLL_INTERVAL_MS = 1000;
+    let lastState = null;
+    let __autoNext = 'ROLL';
+
+    function findFrontPieceId(state) {
+      if (!state?.currentPlayerId) return null;
+
+      const pieces = (state.boardState && state.boardState[state.currentPlayerId]) || [];
+      if (!Array.isArray(pieces) || pieces.length === 0) return null;
+
+      // 1) erste Figur, die NICHT GOAL und NICHT HOME ist (also z.B. BOARD)
+      const onBoardIdx = pieces.findIndex(p => p?.status !== 'GOAL' && p?.status !== 'HOME');
+      if (onBoardIdx !== -1) return onBoardIdx;
+
+      // 2) sonst erste HOME-Figur
+      const homeIdx = pieces.findIndex(p => p?.status === 'HOME');
+      if (homeIdx !== -1) return homeIdx;
+
+      // sonst nix (z.B. alle im GOAL)
+      return null;
+    }
+
+    async function chooseFrontPiece() {
+      const pid = document.getElementById('pid').textContent.trim();
+      if (!pid) return;
+
+      const state = lastState;
+      if (!state?.currentPlayerId) {
+        document.getElementById('status').textContent = 'Kein State verfügbar.';
+        return;
+      }
+
+      const pieceId = findFrontPieceId(state);
+      if (pieceId == null) {
+        document.getElementById('status').textContent = 'Keine ziehbare Figur gefunden.';
+        return;
+      }
+
+      await choosePiece(pieceId);
+    }
 
     function ensurePoller() {
       if (!window.__statePoller) {
@@ -184,6 +226,7 @@
       }
       if (!res.ok) return;
       const state = await res.json();
+      lastState = state;
       document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Läuft...';
       document.getElementById('turnInfo').textContent = state.currentPlayerId ? `Zug: ${state.currentPlayerId}` : '';
       renderBoard(state);
@@ -207,8 +250,37 @@
         document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
         return;
       }
+      await doRoll(pid);
+    });
+
+
+    document.getElementById('autoBtn').addEventListener('click', async () => {
+      const pid = document.getElementById('pid').textContent.trim();
+      if (!pid) {
+        document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
+        return;
+      }
+
+      // Wenn wir noch keinen aktuellen State haben: erst holen
+      if (!lastState) {
+        await fetchState();
+        if (!lastState) return;
+      }
+
+      // Abwechselnd: ROLL -> CHOOSE -> ROLL -> ...
+      if (__autoNext === 'ROLL') {
+        await doRoll(pid);
+        __autoNext = 'CHOOSE';
+      } else {
+        await chooseFrontPiece();
+        __autoNext = 'ROLL';
+      }
+    });
+
+    async function doRoll(pid) {
       document.getElementById('status').textContent = 'Würfeln...';
       const res = await fetch(`/api/roll?processInstanceId=${encodeURIComponent(pid)}`, { method: 'POST' });
+
       if (res.status === 404) {
         document.getElementById('status').textContent = 'Prozess nicht gefunden. Starte ein neues Spiel.';
         return;
@@ -222,11 +294,14 @@
         document.getElementById('status').textContent = 'Fehler beim Würfeln.';
         return;
       }
+
       const state = await res.json();
+      lastState = state;
       document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Gewürfelt.';
       renderBoard(state);
       renderMeta(state);
-    });
+    }
+
 
     async function choosePiece(pieceId) {
       const pid = document.getElementById('pid').textContent.trim();
@@ -241,6 +316,8 @@
       document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Figur gezogen.';
       renderBoard(state);
       renderMeta(state);
+      lastState = state;
+      __autoNext = 'ROLL';
     }
 
     // initial render
