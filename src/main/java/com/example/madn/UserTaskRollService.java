@@ -62,7 +62,7 @@ public class UserTaskRollService {
 
 	private void handleRollDice(Task task) {
 		int dice = 1 + rnd.nextInt(6);
-		boolean pasch = dice == 6;
+		boolean pasch = dice > 3;
 
 		log.info("[{}] Würfeln: {} (Pasch={})", task.getProcessInstanceId(), dice, pasch);
 
