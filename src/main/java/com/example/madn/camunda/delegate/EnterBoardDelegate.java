@@ -1,7 +1,6 @@
 package com.example.madn.camunda.delegate;
 
 import com.example.madn.logic.BoardLogic;
-import com.example.madn.model.PiecePosition;
 import com.example.madn.model.PieceStatus;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
@@ -32,6 +31,6 @@ public class EnterBoardDelegate implements JavaDelegate {
 		execution.setVariable("moveWasPossible", true);
 		execution.setVariable("kicked", false);
 
-		log.info("[{}] {} enters board with piece {} -> {}", execution.getProcessInstanceId(), playerId, pieceId, updated);
+		log.info("[{}] {} betritt das Brett mit Figur {} -> {}", execution.getProcessInstanceId(), playerId, pieceId, updated);
 	}
 }
