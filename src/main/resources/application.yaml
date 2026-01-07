@@ -14,8 +14,8 @@ spring:
 camunda:
   bpm:
     admin-user:
-      id: demo
-      password: demo
+      id: camunda
+      password: admin
     filter:
       create: All tasks
     generic-properties:
