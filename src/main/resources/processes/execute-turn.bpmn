@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+				  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+				  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+				  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+				  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+				  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+				  id="Definitions_MaDn_ExecuteTurn"
+				  targetNamespace="http://example.com/mensch-aerger-dich-nicht"
+				  exporter="Camunda Modeler"
+				  exporterVersion="5.42.0">
+
+	<bpmn:process id="Process_ExecuteTurn" name="ExecuteTurn" isExecutable="true">
+
+		<bpmn:startEvent id="StartEvent_ExecuteTurn">
+			<bpmn:outgoing>Flow_LoadPiece</bpmn:outgoing>
+		</bpmn:startEvent>
+
+		<bpmn:serviceTask id="Task_LoadPieceState" name="Figur laden"
+						  camunda:class="com.example.madn.camunda.delegate.LoadPieceStateDelegate">
+			<bpmn:incoming>Flow_LoadPiece</bpmn:incoming>
+			<bpmn:outgoing>Flow_Load_To_CheckGoal</bpmn:outgoing>
+		</bpmn:serviceTask>
+
+		<bpmn:exclusiveGateway id="Gateway_InGoal" name="Schon im Ziel?">
+			<bpmn:incoming>Flow_Load_To_CheckGoal</bpmn:incoming>
+			<bpmn:outgoing>Flow_InGoal_Yes</bpmn:outgoing>
+			<bpmn:outgoing>Flow_InGoal_No</bpmn:outgoing>
+		</bpmn:exclusiveGateway>
+
+		<bpmn:serviceTask id="Task_NoMoveGoal" name="Kein Zug möglich"
+						  camunda:class="com.example.madn.camunda.delegate.NoMoveDelegate">
+			<bpmn:incoming>Flow_InGoal_Yes</bpmn:incoming>
+			<bpmn:outgoing>Flow_NoMoveGoal_To_End</bpmn:outgoing>
+		</bpmn:serviceTask>
+
+		<bpmn:exclusiveGateway id="Gateway_AtHome" name="Figur zuhause?">
+			<bpmn:incoming>Flow_InGoal_No</bpmn:incoming>
+			<bpmn:outgoing>Flow_AtHome_Yes</bpmn:outgoing>
+			<bpmn:outgoing>Flow_AtHome_No</bpmn:outgoing>
+		</bpmn:exclusiveGateway>
+
+		<bpmn:exclusiveGateway id="Gateway_CanEnterBoard" name="Pasch?">
+			<bpmn:incoming>Flow_AtHome_Yes</bpmn:incoming>
+			<bpmn:outgoing>Flow_CanEnter_Yes</bpmn:outgoing>
+			<bpmn:outgoing>Flow_CanEnter_No</bpmn:outgoing>
+		</bpmn:exclusiveGateway>
+
+		<bpmn:serviceTask id="Task_EnterBoard" name="Aufs Startfeld"
+						  camunda:class="com.example.madn.camunda.delegate.EnterBoardDelegate">
+			<bpmn:incoming>Flow_CanEnter_Yes</bpmn:incoming>
+			<bpmn:outgoing>Flow_Enter_To_End</bpmn:outgoing>
+		</bpmn:serviceTask>
+
+		<bpmn:serviceTask id="Task_NoMoveHome" name="Kein Zug möglich"
+						  camunda:class="com.example.madn.camunda.delegate.NoMoveDelegate">
+			<bpmn:incoming>Flow_CanEnter_No</bpmn:incoming>
+			<bpmn:outgoing>Flow_NoMoveHome_To_End</bpmn:outgoing>
+		</bpmn:serviceTask>
+
+		<bpmn:serviceTask id="Task_ComputeTarget" name="Zug berechnen"
+						  camunda:class="com.example.madn.camunda.delegate.ComputeTargetDelegate">
+			<bpmn:incoming>Flow_AtHome_No</bpmn:incoming>
+			<bpmn:outgoing>Flow_Compute_To_End</bpmn:outgoing>
+		</bpmn:serviceTask>
+
+		<bpmn:endEvent id="EndEvent_ExecuteTurn">
+			<bpmn:incoming>Flow_NoMoveGoal_To_End</bpmn:incoming>
+			<bpmn:incoming>Flow_Enter_To_End</bpmn:incoming>
+			<bpmn:incoming>Flow_NoMoveHome_To_End</bpmn:incoming>
+			<bpmn:incoming>Flow_Compute_To_End</bpmn:incoming>
+		</bpmn:endEvent>
+
+		<!-- Flows -->
+		<bpmn:sequenceFlow id="Flow_LoadPiece" sourceRef="StartEvent_ExecuteTurn" targetRef="Task_LoadPieceState"/>
+		<bpmn:sequenceFlow id="Flow_Load_To_CheckGoal" sourceRef="Task_LoadPieceState" targetRef="Gateway_InGoal"/>
+
+		<bpmn:sequenceFlow id="Flow_InGoal_Yes" sourceRef="Gateway_InGoal" targetRef="Task_NoMoveGoal">
+			<bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${pieceStatus == 'GOAL'}
+			</bpmn:conditionExpression>
+		</bpmn:sequenceFlow>
+
+		<bpmn:sequenceFlow id="Flow_InGoal_No" sourceRef="Gateway_InGoal" targetRef="Gateway_AtHome">
+			<bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${pieceStatus != 'GOAL'}
+			</bpmn:conditionExpression>
+		</bpmn:sequenceFlow>
+
+		<bpmn:sequenceFlow id="Flow_NoMoveGoal_To_End" sourceRef="Task_NoMoveGoal" targetRef="EndEvent_ExecuteTurn"/>
+
+		<bpmn:sequenceFlow id="Flow_AtHome_Yes" sourceRef="Gateway_AtHome" targetRef="Gateway_CanEnterBoard">
+			<bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${pieceStatus == 'HOME'}
+			</bpmn:conditionExpression>
+		</bpmn:sequenceFlow>
+
+		<bpmn:sequenceFlow id="Flow_AtHome_No" sourceRef="Gateway_AtHome" targetRef="Task_ComputeTarget">
+			<bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${pieceStatus == 'BOARD'}
+			</bpmn:conditionExpression>
+		</bpmn:sequenceFlow>
+
+		<bpmn:sequenceFlow id="Flow_CanEnter_Yes" sourceRef="Gateway_CanEnterBoard" targetRef="Task_EnterBoard">
+			<bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${isPasch == true}</bpmn:conditionExpression>
+		</bpmn:sequenceFlow>
+
+		<bpmn:sequenceFlow id="Flow_CanEnter_No" sourceRef="Gateway_CanEnterBoard" targetRef="Task_NoMoveHome">
+			<bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${isPasch != true}</bpmn:conditionExpression>
+		</bpmn:sequenceFlow>
+
+		<bpmn:sequenceFlow id="Flow_Enter_To_End" sourceRef="Task_EnterBoard" targetRef="EndEvent_ExecuteTurn"/>
+		<bpmn:sequenceFlow id="Flow_NoMoveHome_To_End" sourceRef="Task_NoMoveHome" targetRef="EndEvent_ExecuteTurn"/>
+		<bpmn:sequenceFlow id="Flow_Compute_To_End" sourceRef="Task_ComputeTarget" targetRef="EndEvent_ExecuteTurn"/>
+
+	</bpmn:process>
+
+	<!-- Diagram/Layout -->
+	<bpmndi:BPMNDiagram id="BPMNDiagram_ExecuteTurn">
+		<bpmndi:BPMNPlane id="BPMNPlane_ExecuteTurn" bpmnElement="Process_ExecuteTurn">
+
+			<bpmndi:BPMNShape id="Shape_StartEvent_Execute_ExecuteTurn" bpmnElement="StartEvent_ExecuteTurn">
+				<dc:Bounds x="150" y="120" width="36" height="36"/>
+			</bpmndi:BPMNShape>
+
+			<bpmndi:BPMNShape id="Shape_Task_LoadPieceState" bpmnElement="Task_LoadPieceState">
+				<dc:Bounds x="240" y="98" width="150" height="80"/>
+			</bpmndi:BPMNShape>
+
+			<bpmndi:BPMNShape id="Shape_Gateway_InGoal" bpmnElement="Gateway_InGoal" isMarkerVisible="true">
+				<dc:Bounds x="430" y="113" width="50" height="50"/>
+			</bpmndi:BPMNShape>
+
+			<bpmndi:BPMNShape id="Shape_Task_NoMoveGoal" bpmnElement="Task_NoMoveGoal">
+				<dc:Bounds x="530" y="40" width="160" height="80"/>
+			</bpmndi:BPMNShape>
+
+			<bpmndi:BPMNShape id="Shape_Gateway_AtHome" bpmnElement="Gateway_AtHome" isMarkerVisible="true">
+				<dc:Bounds x="530" y="193" width="50" height="50"/>
+			</bpmndi:BPMNShape>
+
+			<bpmndi:BPMNShape id="Shape_Gateway_CanEnterBoard" bpmnElement="Gateway_CanEnterBoard"
+							  isMarkerVisible="true">
+				<dc:Bounds x="650" y="193" width="50" height="50"/>
+			</bpmndi:BPMNShape>
+
+			<bpmndi:BPMNShape id="Shape_Task_EnterBoard" bpmnElement="Task_EnterBoard">
+				<dc:Bounds x="740" y="140" width="160" height="80"/>
+			</bpmndi:BPMNShape>
+
+			<bpmndi:BPMNShape id="Shape_Task_NoMoveHome" bpmnElement="Task_NoMoveHome">
+				<dc:Bounds x="740" y="260" width="160" height="80"/>
+			</bpmndi:BPMNShape>
+
+			<bpmndi:BPMNShape id="Shape_Task_ComputeTarget" bpmnElement="Task_ComputeTarget">
+				<dc:Bounds x="740" y="20" width="160" height="80"/>
+			</bpmndi:BPMNShape>
+
+			<bpmndi:BPMNShape id="Shape_EndEvent_ExecuteTurn" bpmnElement="EndEvent_ExecuteTurn">
+				<dc:Bounds x="980" y="138" width="36" height="36"/>
+			</bpmndi:BPMNShape>
+
+			<!-- Edges -->
+			<bpmndi:BPMNEdge id="Edge_Flow_LoadPiece" bpmnElement="Flow_LoadPiece">
+				<di:waypoint x="186" y="138"/>
+				<di:waypoint x="240" y="138"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_Load_To_CheckGoal" bpmnElement="Flow_Load_To_CheckGoal">
+				<di:waypoint x="390" y="138"/>
+				<di:waypoint x="430" y="138"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_InGoal_Yes" bpmnElement="Flow_InGoal_Yes">
+				<di:waypoint x="455" y="113"/>
+				<di:waypoint x="455" y="80"/>
+				<di:waypoint x="530" y="80"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_NoMoveGoal_To_End" bpmnElement="Flow_NoMoveGoal_To_End">
+				<di:waypoint x="690" y="80"/>
+				<di:waypoint x="998" y="156"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_InGoal_No" bpmnElement="Flow_InGoal_No">
+				<di:waypoint x="480" y="138"/>
+				<di:waypoint x="555" y="193"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_AtHome_Yes" bpmnElement="Flow_AtHome_Yes">
+				<di:waypoint x="580" y="218"/>
+				<di:waypoint x="650" y="218"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_AtHome_No" bpmnElement="Flow_AtHome_No">
+				<di:waypoint x="555" y="243"/>
+				<di:waypoint x="555" y="60"/>
+				<di:waypoint x="740" y="60"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_CanEnter_Yes" bpmnElement="Flow_CanEnter_Yes">
+				<di:waypoint x="675" y="193"/>
+				<di:waypoint x="675" y="180"/>
+				<di:waypoint x="740" y="180"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_CanEnter_No" bpmnElement="Flow_CanEnter_No">
+				<di:waypoint x="700" y="218"/>
+				<di:waypoint x="740" y="300"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_Enter_To_End" bpmnElement="Flow_Enter_To_End">
+				<di:waypoint x="900" y="180"/>
+				<di:waypoint x="980" y="156"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_NoMoveHome_To_End" bpmnElement="Flow_NoMoveHome_To_End">
+				<di:waypoint x="900" y="300"/>
+				<di:waypoint x="998" y="156"/>
+			</bpmndi:BPMNEdge>
+
+			<bpmndi:BPMNEdge id="Edge_Flow_Compute_To_End" bpmnElement="Flow_Compute_To_End">
+				<di:waypoint x="900" y="60"/>
+				<di:waypoint x="998" y="156"/>
+			</bpmndi:BPMNEdge>
+
+		</bpmndi:BPMNPlane>
+	</bpmndi:BPMNDiagram>
+
+</bpmn:definitions>
