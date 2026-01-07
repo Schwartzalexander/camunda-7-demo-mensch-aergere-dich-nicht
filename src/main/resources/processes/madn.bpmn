@@ -48,6 +48,12 @@
       <bpmn:callActivity id="Call_ExecuteTurn" name="Zug ausführen" calledElement="Process_ExecuteTurn">
         <bpmn:incoming>Flow_ChoosePiece_To_ExecuteTurn</bpmn:incoming>
         <bpmn:outgoing>Flow_ExecuteTurn_To_ApplyKicks</bpmn:outgoing>
+        <bpmn:extensionElements>
+          <camunda:in source="currentPlayerId" target="currentPlayerId" />
+          <camunda:in source="chosenPieceId" target="chosenPieceId" />
+          <camunda:in source="boardState" target="boardState" />
+          <camunda:in source="isPasch" target="isPasch" />
+        </bpmn:extensionElements>
       </bpmn:callActivity>
 
       <bpmn:serviceTask id="Task_ApplyKicks" name="Schmeißen" camunda:class="com.example.madn.camunda.delegate.ApplyKicksDelegate">
