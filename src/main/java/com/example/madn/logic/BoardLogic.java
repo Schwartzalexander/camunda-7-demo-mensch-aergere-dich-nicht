@@ -19,6 +19,9 @@ public final class BoardLogic {
     }
 
     public static PiecePosition toPiecePosition(Map<String, Object> map) {
+        if (map == null) {
+            return new PiecePosition(PieceStatus.HOME, 0);
+        }
         String status = Objects.toString(map.getOrDefault("status", "HOME"));
         int index = toInt(map.get("index"), 0);
         return new PiecePosition(PieceStatus.valueOf(status), index);
