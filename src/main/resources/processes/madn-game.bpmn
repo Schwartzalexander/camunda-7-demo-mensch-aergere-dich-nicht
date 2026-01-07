@@ -57,6 +57,8 @@
 					<camunda:in source="isPasch" target="isPasch"/>
 					<camunda:in source="dice" target="dice"/>
 					<camunda:out source="boardState" target="boardState"/>
+					<camunda:out source="moveWasPossible" target="moveWasPossible"/>
+					<camunda:out source="movedPiecePos" target="movedPiecePos"/>
 					<camunda:out source="lastMove" target="lastMove"/>
 				</bpmn:extensionElements>
 				<bpmn:incoming>Flow_ChoosePiece_To_ExecuteTurn</bpmn:incoming>
