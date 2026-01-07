@@ -5,21 +5,117 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Mensch ärgere dich nicht – BPMN Demo</title>
     <style>
-        body { font-family: system-ui, sans-serif; margin: 24px; }
-        .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        button { padding: 10px 14px; cursor: pointer; }
-        .board-wrapper { margin-top: 18px; border: 1px solid #ccc; border-radius: 12px; padding: 12px; max-width: 620px; }
-        .board { position: relative; width: 560px; height: 560px; margin: 0 auto; }
-        .cell { width: 34px; height: 34px; border: 2px solid #666; border-radius: 50%; position: absolute; transform: translate(-50%, -50%); background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #444; }
-        .cell.goal { border-style: dashed; }
-        .cell.home { border-color: #aaa; background: #f8f8f8; }
-        .token { width: 18px; height: 18px; border-radius: 50%; position: absolute; transform: translate(-50%, -50%); cursor: pointer; border: 2px solid #0003; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
-        .token.disabled { cursor: not-allowed; opacity: 0.4; }
-        .meta { margin-top: 16px; max-width: 720px; }
-        code { background: #f3f3f3; padding: 2px 6px; border-radius: 6px; }
-        .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
-        .legend-item { display: flex; align-items: center; gap: 6px; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #333; }
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 24px;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 14px;
+            cursor: pointer;
+        }
+
+        .board-wrapper {
+            margin-top: 18px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            padding: 12px;
+            max-width: 860px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .board {
+            position: relative;
+            width: 760px;
+            height: 760px;
+            margin: 0 auto;
+        }
+
+        /* enger/kleiner */
+        .cell {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #666;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            background: #fff;
+        }
+
+        .token {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            border: 2px solid #0003;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+        }
+
+        .cell.goal {
+            border-style: dashed;
+        }
+
+        .cell.home {
+            border-color: #aaa;
+            background: #f8f8f8;
+        }
+
+        .token {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            border: 2px solid #0003;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+        }
+
+        .token.disabled {
+            cursor: not-allowed;
+            opacity: 0.4;
+        }
+
+        .meta {
+            margin-top: 16px;
+            max-width: 720px;
+        }
+
+        code {
+            background: #f3f3f3;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 1px solid #333;
+        }
     </style>
 </head>
 <body>
@@ -50,289 +146,297 @@
     let __autoNext = 'ROLL';
 
     function updateAutoButton() {
-      const btn = document.getElementById('autoBtn');
-      btn.textContent = __autoNext === 'ROLL'
-        ? 'Automatik: Würfeln'
-        : 'Automatik: Ziehen';
+        const btn = document.getElementById('autoBtn');
+        btn.textContent = __autoNext === 'ROLL'
+            ? 'Automatik: Würfeln'
+            : 'Automatik: Ziehen';
     }
+
     function findFrontPieceId(state) {
-      if (!state?.currentPlayerId) return null;
+        if (!state?.currentPlayerId) return null;
 
-      const pieces = (state.boardState && state.boardState[state.currentPlayerId]) || [];
-      if (!Array.isArray(pieces) || pieces.length === 0) return null;
+        const pieces = (state.boardState && state.boardState[state.currentPlayerId]) || [];
+        if (!Array.isArray(pieces) || pieces.length === 0) return null;
 
-      // 1) erste Figur, die NICHT GOAL und NICHT HOME ist (also z.B. BOARD)
-      const onBoardIdx = pieces.findIndex(p => p?.status !== 'GOAL' && p?.status !== 'HOME');
-      if (onBoardIdx !== -1) return onBoardIdx;
+        // 1) erste Figur, die NICHT GOAL und NICHT HOME ist (also z.B. BOARD)
+        const onBoardIdx = pieces.findIndex(p => p?.status !== 'GOAL' && p?.status !== 'HOME');
+        if (onBoardIdx !== -1) return onBoardIdx;
 
-      // 2) sonst erste HOME-Figur
-      const homeIdx = pieces.findIndex(p => p?.status === 'HOME');
-      if (homeIdx !== -1) return homeIdx;
+        // 2) sonst erste HOME-Figur
+        const homeIdx = pieces.findIndex(p => p?.status === 'HOME');
+        if (homeIdx !== -1) return homeIdx;
 
-      // sonst nix (z.B. alle im GOAL)
-      return null;
+        // sonst nix (z.B. alle im GOAL)
+        return null;
     }
 
     async function chooseFrontPiece() {
-      const pid = document.getElementById('pid').textContent.trim();
-      if (!pid) return;
+        const pid = document.getElementById('pid').textContent.trim();
+        if (!pid) return;
 
-      const state = lastState;
-      if (!state?.currentPlayerId) {
-        document.getElementById('status').textContent = 'Kein State verfügbar.';
-        return;
-      }
+        const state = lastState;
+        if (!state?.currentPlayerId) {
+            document.getElementById('status').textContent = 'Kein State verfügbar.';
+            return;
+        }
 
-      const pieceId = findFrontPieceId(state);
-      if (pieceId == null) {
-        document.getElementById('status').textContent = 'Keine ziehbare Figur gefunden.';
-        return;
-      }
+        const pieceId = findFrontPieceId(state);
+        if (pieceId == null) {
+            document.getElementById('status').textContent = 'Keine ziehbare Figur gefunden.';
+            return;
+        }
 
-      await choosePiece(pieceId);
+        await choosePiece(pieceId);
     }
 
     function ensurePoller() {
-      if (!window.__statePoller) {
-        window.__statePoller = setInterval(fetchState, POLL_INTERVAL_MS);
-      }
+        if (!window.__statePoller) {
+            window.__statePoller = setInterval(fetchState, POLL_INTERVAL_MS);
+        }
     }
 
     function polarToXY(center, radius, angle) {
-      const rad = angle * Math.PI / 180;
-      return {
-        x: center.x + radius * Math.cos(rad),
-        y: center.y + radius * Math.sin(rad)
-      };
+        const rad = angle * Math.PI / 180;
+        return {
+            x: center.x + radius * Math.cos(rad),
+            y: center.y + radius * Math.sin(rad)
+        };
     }
 
-    function computeLayout(boardSize, goalLength) {
-      const center = { x: 280, y: 280 };
-      const mainRadius = 230;
-      const goalRadiusStep = mainRadius / 5;
-      const homesRadius = mainRadius + 40;
-      const main = [];
-      for (let i = 0; i < boardSize; i++) {
-        const angle = (360 / boardSize) * i - 90; // start at top
-        main.push(polarToXY(center, mainRadius, angle));
-      }
-      return { center, main, mainRadius, goalRadiusStep, homesRadius };
+    function computeLayout(boardEl, boardSize, goalLength) {
+        const size = Math.min(boardEl.clientWidth, boardEl.clientHeight);
+        const center = {x: size / 2, y: size / 2};
+
+        // enger packen
+        const mainRadius = size * 0.32;        // vorher 0.35
+        const goalStep = size * 0.042;       // vorher 0.05
+        const homeStep = size * 0.042;       // vorher 0.05
+        const homeOuterPadding = size * 0.045; // vorher 0.06
+
+        const main = [];
+        for (let i = 0; i < boardSize; i++) {
+            const angle = (360 / boardSize) * i - 90;
+            main.push(polarToXY(center, mainRadius, angle));
+        }
+
+        return {size, center, main, mainRadius, goalStep, homeStep, homeOuterPadding};
     }
+
 
     function renderBoard(state) {
-      const board = document.getElementById('board');
-      board.innerHTML = '';
-      const layout = computeLayout(state.boardSize, state.goalLength);
-      const boardState = state.boardState || {};
-      const players = state.players || [];
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+        const layout = computeLayout(board, state.boardSize, state.goalLength);
+        const boardState = state.boardState || {};
+        const players = state.players || [];
 
-      // main track
-      layout.main.forEach((pos, idx) => {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.style.left = `${pos.x}px`;
-        cell.style.top = `${pos.y}px`;
-        cell.title = `Feld ${idx}`;
-        board.appendChild(cell);
-      });
-
-      // goal and home cells + tokens
-      players.forEach((player, pIndex) => {
-        const startIndex = player.startIndex || 0;
-        const startAngle = (360 / state.boardSize) * startIndex - 90;
-
-        // goal cells
-        for (let i = 0; i < state.goalLength; i++) {
-          const goalPos = polarToXY(layout.center, layout.mainRadius - layout.goalRadiusStep * (i + 1), startAngle);
-          const goalCell = document.createElement('div');
-          goalCell.className = 'cell goal';
-          goalCell.style.left = `${goalPos.x}px`;
-          goalCell.style.top = `${goalPos.y}px`;
-          goalCell.style.borderColor = player.color;
-          board.appendChild(goalCell);
-        }
-
-        // home cells
-        for (let i = 0; i < 4; i++) {
-          const offset = (i - 1.5) * 18;
-          const homePos = polarToXY(layout.center, layout.homesRadius, startAngle);
-          const homeCell = document.createElement('div');
-          homeCell.className = 'cell home';
-          homeCell.style.left = `${homePos.x + offset}px`;
-          homeCell.style.top = `${homePos.y + offset}px`;
-          homeCell.style.borderColor = player.color;
-          board.appendChild(homeCell);
-        }
-
-        const pieces = boardState[player.id] || [];
-        pieces.forEach((piece, i) => {
-          const status = piece.status;
-          let target = null;
-          if (status === 'BOARD') {
-            const steps = piece.index ?? 0;
-            const absolute = (startIndex + steps) % state.boardSize;
-            target = layout.main[absolute];
-          } else if (status === 'GOAL') {
-            const goalPos = polarToXY(layout.center, layout.mainRadius - layout.goalRadiusStep * (piece.index + 1), startAngle);
-            target = goalPos;
-          } else {
-            const offset = (i - 1.5) * 18;
-            target = polarToXY(layout.center, layout.homesRadius, startAngle);
-            target.x += offset;
-            target.y += offset;
-          }
-          if (!target) return;
-          const token = document.createElement('div');
-          token.className = 'token';
-          if (state.currentPlayerId !== player.id) {
-            token.classList.add('disabled');
-          }
-          token.style.left = `${target.x}px`;
-          token.style.top = `${target.y}px`;
-          token.style.background = player.color;
-          token.title = `${player.name} Figur ${i}`;
-          token.addEventListener('click', () => {
-            if (state.currentPlayerId !== player.id) return;
-            choosePiece(i);
-          });
-          board.appendChild(token);
+        // main track
+        layout.main.forEach((pos, idx) => {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.style.left = `${pos.x}px`;
+            cell.style.top = `${pos.y}px`;
+            cell.title = `Feld ${idx}`;
+            board.appendChild(cell);
         });
-      });
+
+        // goal and home cells + tokens
+        players.forEach((player, pIndex) => {
+            const startIndex = player.startIndex || 0;
+            const startAngle = (360 / state.boardSize) * startIndex - 90;
+
+            // goal cells
+            for (let i = 0; i < state.goalLength; i++) {
+                const goalPos = polarToXY(layout.center, layout.mainRadius - layout.goalStep * (i + 1), startAngle);
+                const goalCell = document.createElement('div');
+                goalCell.className = 'cell goal';
+                goalCell.style.left = `${goalPos.x}px`;
+                goalCell.style.top = `${goalPos.y}px`;
+                goalCell.style.borderColor = player.color;
+                board.appendChild(goalCell);
+            }
+
+            // home cells (radiale Reihe nach außen = Verlängerung der Zielfelder)
+            const homeBaseR = layout.mainRadius + layout.homeOuterPadding; // direkt außerhalb vom Ring
+            for (let i = 0; i < 4; i++) {
+                const homePos = polarToXY(layout.center, homeBaseR + layout.homeStep * i, startAngle);
+                const homeCell = document.createElement('div');
+                homeCell.className = 'cell home';
+                homeCell.style.left = `${homePos.x}px`;
+                homeCell.style.top = `${homePos.y}px`;
+                homeCell.style.borderColor = player.color;
+
+                board.appendChild(homeCell);
+            }
+
+            const pieces = boardState[player.id] || [];
+            pieces.forEach((piece, i) => {
+                const status = piece.status;
+                let target = null;
+                if (status === 'BOARD') {
+                    const steps = piece.index ?? 0;
+                    const absolute = (startIndex + steps) % state.boardSize;
+                    target = layout.main[absolute];
+                } else if (status === 'GOAL') {
+                    const goalPos = polarToXY(layout.center, layout.mainRadius - layout.goalStep * (piece.index + 1), startAngle);
+                    target = goalPos;
+                } else {
+                    // HOME
+                    const homeBaseR = layout.mainRadius + layout.homeOuterPadding;
+                    target = polarToXY(layout.center, homeBaseR + layout.homeStep * i, startAngle);
+                }
+                if (!target) return;
+                const token = document.createElement('div');
+                token.className = 'token';
+                if (state.currentPlayerId !== player.id) {
+                    token.classList.add('disabled');
+                }
+                token.style.left = `${target.x}px`;
+                token.style.top = `${target.y}px`;
+                token.style.background = player.color;
+                token.title = `${player.name} Figur ${i}`;
+                token.addEventListener('click', () => {
+                    if (state.currentPlayerId !== player.id) return;
+                    choosePiece(i);
+                });
+                board.appendChild(token);
+            });
+        });
     }
 
     function renderMeta(state) {
-      const meta = document.getElementById('meta');
-      const players = state.players || [];
-      const boardState = state.boardState || {};
-      const winner = state.winnerPlayerId ? players.find(p => p.id === state.winnerPlayerId)?.name : null;
-      meta.innerHTML = `
+        const meta = document.getElementById('meta');
+        const players = state.players || [];
+        const boardState = state.boardState || {};
+        const winner = state.winnerPlayerId ? players.find(p => p.id === state.winnerPlayerId)?.name : null;
+        meta.innerHTML = `
         <div>Aktueller Spieler: <code>${state.currentPlayerId ?? '-'}</code> | Wurf: <code>${state.dice1 ?? '-'}</code> und <code>${state.dice2 ?? '-'}</code> | Pasch: <code>${state.isPasch ?? '-'}</code></div>
         <div>Ausgewählte Figur: <code>${state.chosenPieceId ?? '-'}</code> | Move möglich: <code>${state.moveWasPossible ?? '-'}</code> | Geschmissen: <code>${state.kicked ?? '-'}</code></div>
         <div>Spieler: ${players.map(p => `${p.name} (${p.id})`).join(', ')}</div>
         <div>BoardState: <code>${JSON.stringify(boardState)}</code></div>
         ${winner ? `<p>🎉 Gewinner: ${winner}</p>` : ''}
-        <p>Camunda Webapps: <a href="/camunda/app/welcome/default/#!/login" target="_blank">Cockpit/Tasklist</a> (demo/demo)</p>
+        <p>Camunda Webapps: <a href="/camunda/app/welcome/default/#!/login" target="_blank">Cockpit/Tasklist</a> (camunda/admin)</p>
       `;
 
-      const legend = document.getElementById('legend');
-      legend.innerHTML = players.map(p => `
+        const legend = document.getElementById('legend');
+        legend.innerHTML = players.map(p => `
         <div class="legend-item"><span class="dot" style="background:${p.color}"></span>${p.name}</div>
       `).join('');
     }
 
     async function fetchState() {
-      const pid = document.getElementById('pid').textContent.trim();
-      if (!pid) return;
-      const res = await fetch(`/api/state?processInstanceId=${encodeURIComponent(pid)}`);
-      if (res.status === 404) {
-        document.getElementById('status').textContent = 'Prozess beendet oder nicht gefunden. Starte ein neues Spiel.';
-        clearInterval(window.__statePoller);
-        window.__statePoller = null;
-        return;
-      }
-      if (!res.ok) return;
-      const state = await res.json();
-      lastState = state;
-      document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Läuft...';
-      document.getElementById('turnInfo').textContent = state.currentPlayerId ? `Zug: ${state.currentPlayerId}` : '';
-      renderBoard(state);
-      renderMeta(state);
+        const pid = document.getElementById('pid').textContent.trim();
+        if (!pid) return;
+        const res = await fetch(`/api/state?processInstanceId=${encodeURIComponent(pid)}`);
+        if (res.status === 404) {
+            document.getElementById('status').textContent = 'Prozess beendet oder nicht gefunden. Starte ein neues Spiel.';
+            clearInterval(window.__statePoller);
+            window.__statePoller = null;
+            return;
+        }
+        if (!res.ok) return;
+        const state = await res.json();
+        lastState = state;
+        document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Läuft...';
+        document.getElementById('turnInfo').textContent = state.currentPlayerId ? `Zug: ${state.currentPlayerId}` : '';
+        renderBoard(state);
+        renderMeta(state);
     }
 
     document.getElementById('startBtn').addEventListener('click', async () => {
-      document.getElementById('status').textContent = 'Starting...';
-      const players = parseInt(document.getElementById('playerCount').value, 10) || 2;
-      const res = await fetch(`/api/start?players=${players}`, { method: 'POST' });
-      const data = await res.json();
-      document.getElementById('pid').textContent = data.processInstanceId;
-      document.getElementById('status').textContent = 'Running';
-      ensurePoller();
-      await fetchState();
-      __autoNext = 'ROLL';
-      updateAutoButton();
+        document.getElementById('status').textContent = 'Starting...';
+        const players = parseInt(document.getElementById('playerCount').value, 10) || 2;
+        const res = await fetch(`/api/start?players=${players}`, {method: 'POST'});
+        const data = await res.json();
+        document.getElementById('pid').textContent = data.processInstanceId;
+        document.getElementById('status').textContent = 'Running';
+        ensurePoller();
+        await fetchState();
+        __autoNext = 'ROLL';
+        updateAutoButton();
 
     });
 
     document.getElementById('rollBtn').addEventListener('click', async () => {
-      const pid = document.getElementById('pid').textContent.trim();
-      if (!pid) {
-        document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
-        return;
-      }
-      await doRoll(pid);
+        const pid = document.getElementById('pid').textContent.trim();
+        if (!pid) {
+            document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
+            return;
+        }
+        await doRoll(pid);
     });
 
 
     document.getElementById('autoBtn').addEventListener('click', async () => {
-      const pid = document.getElementById('pid').textContent.trim();
-      if (!pid) {
-        document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
-        return;
-      }
+        const pid = document.getElementById('pid').textContent.trim();
+        if (!pid) {
+            document.getElementById('status').textContent = 'Bitte zuerst ein Spiel starten.';
+            return;
+        }
 
-      // Wenn wir noch keinen aktuellen State haben: erst holen
-      if (!lastState) {
-        await fetchState();
-        if (!lastState) return;
-      }
+        // Wenn wir noch keinen aktuellen State haben: erst holen
+        if (!lastState) {
+            await fetchState();
+            if (!lastState) return;
+        }
 
-      // Abwechselnd: ROLL -> CHOOSE -> ROLL -> ...
-      if (__autoNext === 'ROLL') {
-        await doRoll(pid);
-        __autoNext = 'CHOOSE';
-      } else {
-        await chooseFrontPiece();
-        __autoNext = 'ROLL';
-      }
+        // Abwechselnd: ROLL -> CHOOSE -> ROLL -> ...
+        if (__autoNext === 'ROLL') {
+            await doRoll(pid);
+            __autoNext = 'CHOOSE';
+        } else {
+            await chooseFrontPiece();
+            __autoNext = 'ROLL';
+        }
 
-      updateAutoButton();
+        updateAutoButton();
     });
 
 
     async function doRoll(pid) {
-      document.getElementById('status').textContent = 'Würfeln...';
-      const res = await fetch(`/api/roll?processInstanceId=${encodeURIComponent(pid)}`, { method: 'POST' });
+        document.getElementById('status').textContent = 'Würfeln...';
+        const res = await fetch(`/api/roll?processInstanceId=${encodeURIComponent(pid)}`, {method: 'POST'});
 
-      if (res.status === 404) {
-        document.getElementById('status').textContent = 'Prozess nicht gefunden. Starte ein neues Spiel.';
-        return;
-      }
-      if (res.status === 409) {
-        const data = await res.json();
-        document.getElementById('status').textContent = data.message ?? 'Kein würfelbarer Task gefunden.';
-        return;
-      }
-      if (!res.ok) {
-        document.getElementById('status').textContent = 'Fehler beim Würfeln.';
-        return;
-      }
+        if (res.status === 404) {
+            document.getElementById('status').textContent = 'Prozess nicht gefunden. Starte ein neues Spiel.';
+            return;
+        }
+        if (res.status === 409) {
+            const data = await res.json();
+            document.getElementById('status').textContent = data.message ?? 'Kein würfelbarer Task gefunden.';
+            return;
+        }
+        if (!res.ok) {
+            document.getElementById('status').textContent = 'Fehler beim Würfeln.';
+            return;
+        }
 
-      const state = await res.json();
-      lastState = state;
-      document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Gewürfelt.';
-      renderBoard(state);
-      renderMeta(state);
-      __autoNext = 'CHOOSE';
-      updateAutoButton();
+        const state = await res.json();
+        lastState = state;
+        document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Gewürfelt.';
+        renderBoard(state);
+        renderMeta(state);
+        __autoNext = 'CHOOSE';
+        updateAutoButton();
     }
 
 
     async function choosePiece(pieceId) {
-      const pid = document.getElementById('pid').textContent.trim();
-      if (!pid) return;
-      document.getElementById('status').textContent = `Figur ${pieceId} wählen...`;
-      const res = await fetch(`/api/choose?processInstanceId=${encodeURIComponent(pid)}&pieceId=${pieceId}`, { method: 'POST' });
-      if (!res.ok) {
-        document.getElementById('status').textContent = 'Keine Auswahl möglich.';
-        return;
-      }
-      const state = await res.json();
-      lastState = state;
-      __autoNext = 'ROLL';
-      updateAutoButton();
-      document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Figur gezogen.';
-      renderBoard(state);
-      renderMeta(state);
+        const pid = document.getElementById('pid').textContent.trim();
+        if (!pid) return;
+        document.getElementById('status').textContent = `Figur ${pieceId} wählen...`;
+        const res = await fetch(`/api/choose?processInstanceId=${encodeURIComponent(pid)}&pieceId=${pieceId}`, {method: 'POST'});
+        if (!res.ok) {
+            document.getElementById('status').textContent = 'Keine Auswahl möglich.';
+            return;
+        }
+        const state = await res.json();
+        lastState = state;
+        __autoNext = 'ROLL';
+        updateAutoButton();
+        document.getElementById('status').textContent = state.winnerPlayerId ? 'Spiel beendet 🎉' : 'Figur gezogen.';
+        renderBoard(state);
+        renderMeta(state);
     }
 
     // initial render
